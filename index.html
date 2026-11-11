@@ -33,10 +33,17 @@
         <div class="panel-heading"><div><p class="eyebrow">02 / IMAGE</p><h2>Ink detection</h2></div></div>
         <label class="range-label"><span>Darkness threshold</span><output id="thresholdOut">200</output></label>
         <input id="threshold" type="range" min="0" max="255" value="200">
-        <p class="hint">Every non-white pixel is drawn; white pixels are left blank.</p>
+        <p class="hint">Dark pixels are traced as connected centerline paths; white pixels are left blank.</p>
         <label class="check"><input id="invert" type="checkbox"> Draw light areas instead</label>
         <div class="section-rule"></div>
-        <div class="panel-heading"><div><p class="eyebrow">03 / MACHINE</p><h2>256 × 256 mm plate</h2></div></div>
+        <div class="panel-heading"><div><p class="eyebrow">03 / MACHINE</p><h2>Machine profile</h2></div></div>
+        <label class="profile-select">Output profile<select id="machineProfile"><option value="generic">Generic pen-plotter G-code</option><option value="bambu-a1">Bambu Lab A1 · motion-only review export</option></select></label>
+        <div id="a1ProfileWarning" class="a1-warning" hidden>
+          <strong>Bambu A1 review mode — not printer-ready</strong>
+          <p>This export contains only basic XY/Z motion lines. It deliberately does not add an assumed Bambu start sequence, homing, bed leveling, machine offsets, heating controls, or end sequence. Do not send this text file to the printer as-is.</p>
+          <p>The initial 180 × 180 mm software envelope is a cautious placeholder, not a verified map of the A1's wiper, cutter, clips, frame, or pen-holder clearance. The A1 coordinate convention and firmware workflow must be confirmed independently.</p>
+          <label class="check a1-ack"><input id="a1CalibrationAck" type="checkbox"> I have independently measured the pen offsets and Z heights, verified the coordinate origin and physical keep-out area, and understand this is only a motion review file—not a ready-to-print job.</label>
+        </div>
         <div class="field-grid">
           <label>Bed width (mm)<input id="bedWidth" type="number" min="1" max="256" step="0.1" value="256"></label>
           <label>Bed height (mm)<input id="bedHeight" type="number" min="1" max="256" step="0.1" value="256"></label>
@@ -53,7 +60,7 @@
           <label class="offset-slider"><span>X offset <output id="offsetXOut">0.0 mm</output></span><input id="offsetXSlider" type="range" min="-50" max="50" step="0.1" value="0"></label>
           <label class="offset-slider"><span>Y offset <output id="offsetYOut">0.0 mm</output></span><input id="offsetYSlider" type="range" min="-50" max="50" step="0.1" value="0"></label>
           <label class="offset-slider"><span>Z offset <output id="offsetZOut">0.0 mm</output></span><input id="offsetZSlider" type="range" min="-50" max="50" step="0.1" value="0"></label>
-          <p class="hint">Each slider stays linked to its matching offset field. Range: −50 to +50 mm.</p>
+          <p class="hint">Each slider stays linked to its matching offset field. Range: −50 to +50 mm. For A1 mode, use measured values rather than estimates.</p>
         </div>
         <div class="section-rule"></div>
         <div class="panel-heading"><div><p class="eyebrow">04 / PEN & SPEED</p><h2>Movement settings</h2></div></div>
@@ -71,7 +78,7 @@
         <div class="preview-head"><div><p class="eyebrow">LIVE PREVIEW</p><h2>Drawing preview</h2></div><span id="pageInfo" class="pill">No PDF loaded</span></div>
         <div class="preview-stage"><canvas id="preview" width="800" height="800"></canvas><div id="emptyState" class="empty-state"><span>▧</span><strong>Your page will appear here</strong><small>Upload a PDF to preview the pen path</small></div></div>
         <div class="preview-foot"><span><i class="dot"></i> Detected ink</span><span id="strokeCount">0 strokes</span></div>
-        <div class="notice"><strong>Before you run it</strong><p>This creates generic Marlin-style G-code: X/Y moves the printer toolhead with the attached pen, and Z lifts or lowers the pen. The paper is assumed to remain fixed on a 256 × 256 mm plate. Actual motion depends on your printer mechanics; verify the coordinate system and test with the pen lifted before drawing. Calibrate pen Z and offsets for your holder.</p></div>
+        <div class="notice"><strong>Machine safety</strong><p>Generic output is not verified for Bambu firmware. The A1 review profile exports a motion-only text file, not a complete printer job. Neither profile verifies physical clearances or makes a real printer safe to operate. Do not run an export until its firmware workflow, coordinate frame, pen offsets, Z clearance, and physical keep-outs have been independently validated.</p></div>
       </div>
     </section>
     <section class="panel simulation-panel">
