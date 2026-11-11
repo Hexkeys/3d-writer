@@ -209,7 +209,7 @@ function generateGcode() {
     throw new Error("No pen strokes were detected. Try lowering the darkness threshold, turning on invert, or choosing a darker photo.");
   }
   lines.push(`G0 Z${penUpZ.toFixed(3)} F${s.zFeed}`,"M5","M400","; End");
-  const gcodeText=lines.join("\\n")+"\\n";
+  const gcodeText=lines.join("\n")+"\n";
 
   // Download is the primary action. A 3D/WebGL preview failure must never block G-code export.
   const blob=new Blob([gcodeText],{type:"text/plain;charset=utf-8"});
