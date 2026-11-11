@@ -270,7 +270,7 @@ function init3D(){
   const holder=beam(13,24,13,10,127,10,dark);
   const pen=new THREE.Mesh(new THREE.CylinderGeometry(4.2,3.2,105,18),material(0xe9d7a4));scene.add(pen);
   const penBand=new THREE.Mesh(new THREE.CylinderGeometry(4.8,4.8,5,18),material(0x34465d));scene.add(penBand);
-  const tip=new THREE.Mesh(new THREE.ConeGeometry(2.1,9,14),material(0x253044));scene.add(tip);
+  const tip=new THREE.Mesh(new THREE.ConeGeometry(2.1,9,14),material(0x253044));tip.rotation.z=Math.PI;scene.add(tip);
   const path=new THREE.LineSegments(new THREE.BufferGeometry(),new THREE.LineBasicMaterial({color:0x243047}));scene.add(path);
   const aim=new THREE.Vector3(110,20,110);let theta=.8,phi=1.0,radius=470,drag=false,lx=0,ly=0;
   const place=()=>{phi=Math.max(.15,Math.min(1.5,phi));camera.position.set(aim.x+radius*Math.sin(phi)*Math.sin(theta),aim.y+radius*Math.cos(phi),aim.z+radius*Math.sin(phi)*Math.cos(theta));camera.lookAt(aim);};place();
@@ -296,7 +296,7 @@ function updateSimulation(index){
   sim.holder.position.set(px,127,pz);
   sim.pen.position.set(px,py+52.5,pz);
   sim.penBand.position.set(px,py+89,pz);
-  sim.tip.position.set(px,py+2.5,pz);
+  sim.tip.position.set(px,py+4.5,pz);
   const points=[];
   for(let i=0;i<=sim.index;i++){
     const q=sim.moves[i];
