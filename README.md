@@ -68,3 +68,10 @@ A browser-based version is available at the repository root:
 5. The published site will be at **https://hexkeys.github.io/3d-writer/**.
 
 The web app uses PDF.js from jsDelivr to read PDF pages. PDF content is processed in the browser; it is not sent to this repository or an application server. The Python command-line tool remains available separately.
+
+
+## Bambu Lab A1 profile (review-only)
+
+The web app includes a **Bambu Lab A1 · motion-only review export** profile. It applies a reduced 180 × 180 mm software drawing envelope, requires the user to enter pen-up and pen-down Z values, and requires an explicit acknowledgement that pen offsets, coordinate origin, Z clearance, and physical keep-outs have been independently checked.
+
+**This is not a printer-ready A1 file.** The export intentionally omits an assumed Bambu startup/shutdown sequence, homing, probing, heating, and parking commands. It is a motion-only text artifact for inspection and further machine-specific validation. The 180 × 180 mm envelope is a software precaution only; it is not a verified collision-free area for a particular pen holder or printer setup. Do not send the exported file directly to the printer. No compatibility with a particular A1 firmware version is claimed.
