@@ -255,21 +255,30 @@ function init3D(){
   const material=(color)=>new THREE.MeshStandardMaterial({color,roughness:.65});
   const frame=material(0x9aaabd),dark=material(0x34465d),bedMat=material(0x26384e);
   const beam=(w,h,d,x,y,z,mat)=>{const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);o.position.set(x,y,z);scene.add(o);return o;};
+  // Printer bed and a clearly visible sheet of paper sitting on top.
   beam(230,5,230,110,0,110,bedMat);
+  const paperMat=new THREE.MeshStandardMaterial({color:0xf3f0e6,roughness:.92,side:THREE.DoubleSide});
+  const paper=new THREE.Mesh(new THREE.BoxGeometry(200,1.2,200),paperMat);
+  paper.position.set(110,3.6,110);scene.add(paper);
+  const paperEdge=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(200,1.25,200)),new THREE.LineBasicMaterial({color:0xb8b5aa}));
+  paperEdge.position.copy(paper.position);scene.add(paperEdge);
   for(const p of [[-8,-8],[228,-8],[-8,228],[228,228]])beam(7,185,7,p[0],92,p[1],frame);
   beam(245,7,7,110,185,-8,frame);beam(245,7,7,110,185,228,frame);
   beam(7,7,245,-8,185,110,frame);beam(7,7,245,228,185,110,frame);
   const carriage=beam(34,24,28,10,145,10,material(0x9de6c2));
-  const pen=new THREE.Mesh(new THREE.CylinderGeometry(2,1.5,42,12),material(0xe9d7a4));scene.add(pen);
-  const tip=new THREE.Mesh(new THREE.SphereGeometry(3,12,8),material(0x34e5a1));scene.add(tip);
-  const path=new THREE.LineSegments(new THREE.BufferGeometry(),new THREE.LineBasicMaterial({color:0x42d99c}));scene.add(path);
+  // Pen holder, long pen barrel, collar, and fine writing tip.
+  const holder=beam(13,24,13,10,127,10,dark);
+  const pen=new THREE.Mesh(new THREE.CylinderGeometry(4.2,3.2,105,18),material(0xe9d7a4));scene.add(pen);
+  const penBand=new THREE.Mesh(new THREE.CylinderGeometry(4.8,4.8,5,18),material(0x34465d));scene.add(penBand);
+  const tip=new THREE.Mesh(new THREE.ConeGeometry(2.1,9,14),material(0x253044));scene.add(tip);
+  const path=new THREE.LineSegments(new THREE.BufferGeometry(),new THREE.LineBasicMaterial({color:0x243047}));scene.add(path);
   const aim=new THREE.Vector3(110,20,110);let theta=.8,phi=1.0,radius=470,drag=false,lx=0,ly=0;
   const place=()=>{phi=Math.max(.15,Math.min(1.5,phi));camera.position.set(aim.x+radius*Math.sin(phi)*Math.sin(theta),aim.y+radius*Math.cos(phi),aim.z+radius*Math.sin(phi)*Math.cos(theta));camera.lookAt(aim);};place();
   renderer.domElement.addEventListener("pointerdown",e=>{drag=true;lx=e.clientX;ly=e.clientY;renderer.domElement.setPointerCapture(e.pointerId);});
   renderer.domElement.addEventListener("pointerup",()=>drag=false);
   renderer.domElement.addEventListener("pointermove",e=>{if(!drag)return;theta-=(e.clientX-lx)*.008;phi+=(e.clientY-ly)*.008;lx=e.clientX;ly=e.clientY;place();});
   renderer.domElement.addEventListener("wheel",e=>{radius=Math.max(260,Math.min(850,radius+e.deltaY*.5));place();},{passive:true});
-  sim={scene,camera,renderer,carriage,pen,tip,path,moves:[],index:0};
+  sim={scene,camera,renderer,carriage,holder,pen,penBand,tip,path,moves:[],index:0};
   renderer.setAnimationLoop(()=>renderer.render(scene,camera));
   window.addEventListener("resize",()=>{if(!sim)return;camera.aspect=host.clientWidth/430;camera.updateProjectionMatrix();renderer.setSize(host.clientWidth,430);});
 }
@@ -279,14 +288,21 @@ function updateSimulation(index){
   const s=settings(),m=sim.moves[sim.index];
   const usableW=s.bedWidth-2*s.margin,usableH=s.bedHeight-2*s.margin;
   const scale=Math.min(220/Math.max(1,usableW),220/Math.max(1,usableH));
-  const px=(m.x-s.originX)*scale+10,pz=(m.y-s.originY)*scale+10,py=12+(m.z-(s.penDown+s.offsetZ))*scale;
-  sim.carriage.position.set(px,145,pz);sim.pen.position.set(px,125,pz);sim.tip.position.set(px,py,pz);
+  const px=(m.x-s.originX)*scale+10,pz=(m.y-s.originY)*scale+10;
+  // Pen tip tracks the commanded Z height; at pen-down it touches the paper surface.
+  const paperSurfaceY=4.35;
+  const py=paperSurfaceY+(m.z-(s.penDown+s.offsetZ))*scale;
+  sim.carriage.position.set(px,145,pz);
+  sim.holder.position.set(px,127,pz);
+  sim.pen.position.set(px,py+52.5,pz);
+  sim.penBand.position.set(px,py+89,pz);
+  sim.tip.position.set(px,py+2.5,pz);
   const points=[];
   for(let i=0;i<=sim.index;i++){
     const q=sim.moves[i];
     if(q.draw && (q.x!==q.fromX || q.y!==q.fromY)){
-      points.push(new THREE.Vector3((q.fromX-s.originX)*scale+10,12,(q.fromY-s.originY)*scale+10));
-      points.push(new THREE.Vector3((q.x-s.originX)*scale+10,12,(q.y-s.originY)*scale+10));
+      points.push(new THREE.Vector3((q.fromX-s.originX)*scale+10,paperSurfaceY+0.15,(q.fromY-s.originY)*scale+10));
+      points.push(new THREE.Vector3((q.x-s.originX)*scale+10,paperSurfaceY+0.15,(q.y-s.originY)*scale+10));
     }
   }
   sim.path.geometry.dispose();sim.path.geometry=new THREE.BufferGeometry().setFromPoints(points);
