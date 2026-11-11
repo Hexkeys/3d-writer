@@ -35,7 +35,7 @@ function drawPreview() {
   let count = 0;
   for (let i=0;i<data.length;i+=4) {
     const gray = Math.round(.299*data[i]+.587*data[i+1]+.114*data[i+2]);
-    const ink = s.invert ? gray > s.threshold : gray <= s.threshold;
+    const ink = gray < 255;
     const v = ink ? 30 : 255;
     out.data[i]=ink?26:255; out.data[i+1]=ink?93:255; out.data[i+2]=ink?66:255; out.data[i+3]=255;
     if (ink) count++;
@@ -182,13 +182,13 @@ function generateGcode() {
     while(x<w) {
       const idx=(y*w+x)*4;
       const gray=Math.round(.299*pixels[idx]+.587*pixels[idx+1]+.114*pixels[idx+2]);
-      const ink=s.invert?gray>s.threshold:gray<=s.threshold;
+      const ink=gray<255;
       if(!ink){x++;continue;}
       const start=x;
       while(x+1<w) {
         const j=(y*w+x+1)*4;
         const g=Math.round(.299*pixels[j]+.587*pixels[j+1]+.114*pixels[j+2]);
-        if(!(s.invert?g>s.threshold:g<=s.threshold)) break;
+        if(g===255) break;
         x++;
       }
       runs.push([start,x]); x++;
@@ -206,7 +206,7 @@ function generateGcode() {
     }
   }
   if (strokes === 0) {
-    throw new Error("No pen strokes were detected. Try lowering the darkness threshold, turning on invert, or choosing a darker photo.");
+    throw new Error("No pen strokes were detected. Make sure the image contains pixels darker than pure white.");
   }
   lines.push(`G0 Z${penUpZ.toFixed(3)} F${s.zFeed}`,"M5","M400","; End");
   const gcodeText=lines.join("\n")+"\n";
