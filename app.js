@@ -1,4 +1,5 @@
 import * as pdfjsLib from "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs";
+import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js";
 pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs";
 
 const $ = (id) => document.getElementById(id);
@@ -123,10 +124,93 @@ function generateGcode() {
     }
   }
   lines.push(`G0 Z${s.penUp.toFixed(3)} F${s.zFeed}`,"M5","M400","; End");
-  const blob=new Blob([lines.join("\n")+"\n"],{type:"text/plain;charset=utf-8"});
+  const gcodeText=lines.join("\n")+"\n";
+  setupSimulation(gcodeText);
+  const blob=new Blob([gcodeText],{type:"text/plain;charset=utf-8"});
   const url=URL.createObjectURL(blob);
   const a=document.createElement("a");a.href=url;a.download="Gcode.txt";a.click();URL.revokeObjectURL(url);
   $("status").textContent=`Downloaded Gcode.txt · ${strokes.toLocaleString()} pen strokes.`;
   $("strokeCount").textContent=strokes.toLocaleString()+" strokes";
 }
 $("generate").addEventListener("click",()=>{try{generateGcode();}catch(e){$("status").textContent=e.message;}});
+
+
+// Three.js visual simulator: reads the generated G-code, never controls a real printer.
+let sim = null;
+let simTimer = null;
+function setupSimulation(gcodeText) {
+  const moves=[]; let x=0,y=0,z=5,pen=false;
+  for (const raw of gcodeText.split(/\r?\n/)) {
+    const line=raw.split(";")[0].trim();
+    const command=line.match(/^(G0|G1)\s/i);
+    if(!command) continue;
+    const get=(axis,current)=>{const m=line.match(new RegExp("(?:^|\\s)"+axis+"([-+]?(?:\\d+\\.?\\d*|\\.\\d+))","i"));return m?Number(m[1]):current;};
+    const oldZ=z; x=get("X",x);y=get("Y",y);z=get("Z",z);
+    if(command[1].toUpperCase()==="G1" && z!==oldZ) pen=z<=0.5;
+    if(command[1].toUpperCase()==="G0" && z>0.5) pen=false;
+    moves.push({x,y,z,draw:pen});
+  }
+  if(!moves.length)return;
+  init3D();sim.moves=moves;
+  $("simSlider").max=String(moves.length-1);$("simSlider").value="0";
+  $("simSlider").disabled=false;$("simPlay").disabled=false;
+  $("simStatus").textContent=moves.length.toLocaleString()+" moves loaded";
+  updateSimulation(0);
+}
+function init3D(){
+  const host=$("simViewport");
+  if(sim?.renderer){sim.renderer.setAnimationLoop(null);sim.renderer.dispose();host.removeChild(sim.renderer.domElement);}
+  $("simEmpty").style.display="none";
+  const scene=new THREE.Scene();scene.background=new THREE.Color(0x0b1626);
+  scene.add(new THREE.GridHelper(240,24,0x52708c,0x263b54));
+  const camera=new THREE.PerspectiveCamera(42,host.clientWidth/430,.1,1500);
+  camera.position.set(300,260,330);
+  const renderer=new THREE.WebGLRenderer({antialias:true});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));renderer.setSize(host.clientWidth,430);host.appendChild(renderer.domElement);
+  scene.add(new THREE.HemisphereLight(0xc9e5ff,0x263348,2));
+  const light=new THREE.DirectionalLight(0xffffff,2);light.position.set(160,280,180);scene.add(light);
+  const material=(color)=>new THREE.MeshStandardMaterial({color,roughness:.65});
+  const frame=material(0x9aaabd),dark=material(0x34465d),bedMat=material(0x26384e);
+  const beam=(w,h,d,x,y,z,mat)=>{const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);o.position.set(x,y,z);scene.add(o);return o;};
+  beam(230,5,230,110,0,110,bedMat);
+  for(const p of [[-8,-8],[228,-8],[-8,228],[228,228]])beam(7,185,7,p[0],92,p[1],frame);
+  beam(245,7,7,110,185,-8,frame);beam(245,7,7,110,185,228,frame);
+  beam(7,7,245,-8,185,110,frame);beam(7,7,245,228,185,110,frame);
+  const carriage=beam(34,24,28,10,145,10,material(0x9de6c2));
+  const pen=new THREE.Mesh(new THREE.CylinderGeometry(2,1.5,42,12),material(0xe9d7a4));scene.add(pen);
+  const tip=new THREE.Mesh(new THREE.SphereGeometry(3,12,8),material(0x34e5a1));scene.add(tip);
+  const path=new THREE.Line(new THREE.BufferGeometry(),new THREE.LineBasicMaterial({color:0x42d99c}));scene.add(path);
+  const aim=new THREE.Vector3(110,20,110);let theta=.8,phi=1.0,radius=470,drag=false,lx=0,ly=0;
+  const place=()=>{phi=Math.max(.15,Math.min(1.5,phi));camera.position.set(aim.x+radius*Math.sin(phi)*Math.sin(theta),aim.y+radius*Math.cos(phi),aim.z+radius*Math.sin(phi)*Math.cos(theta));camera.lookAt(aim);};place();
+  renderer.domElement.addEventListener("pointerdown",e=>{drag=true;lx=e.clientX;ly=e.clientY;renderer.domElement.setPointerCapture(e.pointerId);});
+  renderer.domElement.addEventListener("pointerup",()=>drag=false);
+  renderer.domElement.addEventListener("pointermove",e=>{if(!drag)return;theta-=(e.clientX-lx)*.008;phi+=(e.clientY-ly)*.008;lx=e.clientX;ly=e.clientY;place();});
+  renderer.domElement.addEventListener("wheel",e=>{radius=Math.max(260,Math.min(850,radius+e.deltaY*.5));place();},{passive:true});
+  sim={scene,camera,renderer,carriage,pen,tip,path,moves:[],index:0};
+  renderer.setAnimationLoop(()=>renderer.render(scene,camera));
+  window.addEventListener("resize",()=>{if(!sim)return;camera.aspect=host.clientWidth/430;camera.updateProjectionMatrix();renderer.setSize(host.clientWidth,430);});
+}
+function updateSimulation(index){
+  if(!sim?.moves?.length)return;
+  sim.index=Math.max(0,Math.min(sim.moves.length-1,Math.floor(index)));
+  const s=settings(),m=sim.moves[sim.index];
+  const usableW=s.bedWidth-2*s.margin,usableH=s.bedHeight-2*s.margin;
+  const scale=Math.min(220/Math.max(1,usableW),220/Math.max(1,usableH));
+  const px=(m.x-s.originX-s.offsetX)*scale+10,pz=(m.y-s.originY-s.offsetY)*scale+10,py=12+(m.z-s.penDown)*scale;
+  sim.carriage.position.set(px,145,pz);sim.pen.position.set(px,125,pz);sim.tip.position.set(px,py,pz);
+  const points=[];
+  for(let i=0;i<=sim.index;i++){const q=sim.moves[i];if(q.draw)points.push(new THREE.Vector3((q.x-s.originX-s.offsetX)*scale+10,12,(q.y-s.originY-s.offsetY)*scale+10));}
+  sim.path.geometry.dispose();sim.path.geometry=new THREE.BufferGeometry().setFromPoints(points);
+  $("simSlider").value=String(sim.index);
+  $("simProgress").textContent=Math.round(sim.index/Math.max(1,sim.moves.length-1)*100)+"%";
+  $("simStatus").textContent=(sim.index+1).toLocaleString()+" / "+sim.moves.length.toLocaleString()+" moves";
+}
+function stopSim(){if(simTimer){clearInterval(simTimer);simTimer=null;} $("simPlay").textContent="▶ Play";}
+$("simPlay").addEventListener("click",()=>{
+  if(!sim?.moves?.length)return;
+  if(simTimer){stopSim();return;}
+  if(sim.index>=sim.moves.length-1)updateSimulation(0);
+  $("simPlay").textContent="Ⅱ Pause";
+  simTimer=setInterval(()=>{const step=Math.max(1,Math.round(Number($("simSpeed").value)*Math.max(1,sim.moves.length/1800)));const next=sim.index+step;if(next>=sim.moves.length-1){updateSimulation(sim.moves.length-1);stopSim();}else updateSimulation(next);},30);
+});
+$("simSlider").addEventListener("input",()=>{stopSim();updateSimulation(Number($("simSlider").value));});
