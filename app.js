@@ -352,6 +352,8 @@ function init3D(){
   renderer.domElement.addEventListener("pointermove",e=>{if(!drag)return;angle-=(e.clientX-lx)*.006;elevation+=(e.clientY-ly)*.006;lx=e.clientX;ly=e.clientY;place();});
   renderer.domElement.addEventListener("wheel",e=>{radius=Math.max(500,Math.min(1500,radius+e.deltaY*.7));place();},{passive:true});
   sim={scene,camera,renderer,bedGroup,gantryGroup,headGroup,path,moves:[],index:0,bedLeft,bedFront,bedSurfaceY,manualZ:Number($("simPenHeight")?.value||0)};
+  bedGroup.position.set(bedLeft,52,bedFront);
+  headGroup.position.set(bedLeft+128+25,0,0);
   renderer.setAnimationLoop(()=>renderer.render(scene,camera));
   window.addEventListener("resize",()=>{if(!sim)return;camera.aspect=host.clientWidth/430;camera.updateProjectionMatrix();renderer.setSize(host.clientWidth,430);});
   updatePenHeightControl();
