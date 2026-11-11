@@ -48,6 +48,13 @@
           <label>Pen offset Y (mm)<input id="offsetY" type="number" step="0.1" value="0"></label>
           <label>Pen offset Z (mm)<input id="offsetZ" type="number" step="0.1" value="0"></label>
         </div>
+        <div class="offset-sliders" aria-label="Pen offset sliders">
+          <p class="offset-title">Fine-tune pen offsets</p>
+          <label class="offset-slider"><span>X offset <output id="offsetXOut">0.0 mm</output></span><input id="offsetXSlider" type="range" min="-50" max="50" step="0.1" value="0"></label>
+          <label class="offset-slider"><span>Y offset <output id="offsetYOut">0.0 mm</output></span><input id="offsetYSlider" type="range" min="-50" max="50" step="0.1" value="0"></label>
+          <label class="offset-slider"><span>Z offset <output id="offsetZOut">0.0 mm</output></span><input id="offsetZSlider" type="range" min="-50" max="50" step="0.1" value="0"></label>
+          <p class="hint">Each slider stays linked to its matching offset field. Range: −50 to +50 mm.</p>
+        </div>
         <div class="section-rule"></div>
         <div class="panel-heading"><div><p class="eyebrow">04 / PEN & SPEED</p><h2>Movement settings</h2></div></div>
         <div class="field-grid">
