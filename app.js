@@ -308,17 +308,17 @@ function init3D(){
   beam(256,8,256,128,4,128,bedMat,bedGroup);
   beam(250,2,250,128,9,128,mat(0x4c6077),bedGroup);
   const paperMat=mat(0xf3f0e6,.95);
-  const paper=new THREE.Mesh(new THREE.BoxGeometry(200,.8,200),paperMat);
+  const paper=new THREE.Mesh(new THREE.BoxGeometry(256,.8,256),paperMat);
   paper.position.set(128,10.4,128);bedGroup.add(paper);
-  const paperEdge=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(200,.9,200)),new THREE.LineBasicMaterial({color:0xb8b5aa}));
+  const paperEdge=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(256,.9,256)),new THREE.LineBasicMaterial({color:0xb8b5aa}));
   paperEdge.position.copy(paper.position);bedGroup.add(paperEdge);
   // Paper clips are illustrative and remain attached to the moving bed.
-  for(const [x,z] of [[28,28],[228,28],[28,228],[228,228]]){
+  for(const [x,z] of [[8,8],[248,8],[8,248],[248,248]]){
     beam(14,3,8,x,12,z,mat(0x8aa6c2),bedGroup);
   }
 
   // Moving X gantry and toolhead. The pen is fixed beside the nozzle, as on the holder.
-  const gantryGroup=new THREE.Group();scene.add(gantryGroup);
+  const gantryGroup=new THREE.Group();gantryGroup.position.z=bedFront;scene.add(gantryGroup);
   beam(390,22,20,W/2,0,0,dark,gantryGroup);
   beam(16,34,24,W/2,0,0,frame,gantryGroup);
   const headGroup=new THREE.Group();gantryGroup.add(headGroup);
@@ -375,7 +375,7 @@ function updateSimulation(index){
   const s=settings(),m=sim.moves[sim.index];
   const headX=sim.bedLeft+m.x+25;
   // The bed moves in Y; the fixed pen stays over the selected bed-local Y coordinate.
-  sim.headGroup.position.set(headX,0,sim.bedFront);
+  sim.headGroup.position.set(headX,0,0);
   const down=s.penDown+s.offsetZ;
   sim.gantryGroup.position.y=sim.bedSurfaceY+200+(m.z-down)+sim.manualZ;
   sim.bedGroup.position.set(sim.bedLeft,52,sim.bedFront-m.y);
