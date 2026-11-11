@@ -18,14 +18,14 @@
     <section class="intro">
       <p class="eyebrow">PDF → PEN PLOTTER</p>
       <h1>Make your printer <span>write.</span></h1>
-      <p class="subhead">Upload a PDF, tune the pen and printer settings, preview the marks, then export a G-code file.</p>
+      <p class="subhead">Upload a PDF or photo, tune the pen and printer settings, preview the marks, then export a G-code file.</p>
     </section>
     <section class="workspace">
       <div class="panel controls">
         <div class="panel-heading"><div><p class="eyebrow">01 / SOURCE</p><h2>Your document</h2></div></div>
-        <label class="upload" for="pdfFile"><span class="upload-icon">＋</span><strong id="fileLabel">Choose a PDF</strong><small>PDF files are processed locally in your browser</small></label>
-        <input id="pdfFile" type="file" accept="application/pdf,.pdf" hidden>
-        <div class="field-grid">
+        <label class="upload" for="pdfFile"><span class="upload-icon">＋</span><strong id="fileLabel">Choose a PDF or photo</strong><small>PDF, JPG, PNG and other supported images · processed locally</small></label>
+        <input id="pdfFile" type="file" accept="application/pdf,.pdf,image/*" hidden>
+        <div class="field-grid" id="pdfOptions">
           <label>PDF page<input id="page" type="number" min="1" value="1"></label>
           <label>Render DPI<input id="dpi" type="number" min="30" max="300" value="150"></label>
         </div>
@@ -58,7 +58,7 @@
           <label>Z speed (mm/min)<input id="zFeed" type="number" min="1" value="300"></label>
         </div>
         <button id="generate" class="primary" disabled>Generate G-code <span>↓</span></button>
-        <p id="status" class="status" aria-live="polite">Upload a PDF to get started.</p>
+        <p id="status" class="status" aria-live="polite">Upload a PDF or photo to get started.</p>
       </div>
       <div class="panel preview-panel">
         <div class="preview-head"><div><p class="eyebrow">LIVE PREVIEW</p><h2>Drawing preview</h2></div><span id="pageInfo" class="pill">No PDF loaded</span></div>
