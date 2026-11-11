@@ -145,10 +145,11 @@ function setupSimulation(gcodeText) {
     const command=line.match(/^(G0|G1)\s/i);
     if(!command) continue;
     const get=(axis,current)=>{const m=line.match(new RegExp("(?:^|\\s)"+axis+"([-+]?(?:\\d+\\.?\\d*|\\.\\d+))","i"));return m?Number(m[1]):current;};
-    const oldZ=z; x=get("X",x);y=get("Y",y);z=get("Z",z);
-    if(command[1].toUpperCase()==="G1" && z!==oldZ) pen=z<=0.5;
-    if(command[1].toUpperCase()==="G0" && z>0.5) pen=false;
-    moves.push({x,y,z,draw:pen});
+    const oldX=x,oldY=y;
+    x=get("X",x);y=get("Y",y);z=get("Z",z);
+    if(command[1].toUpperCase()==="G1" && /(?:^|\\s)Z/i.test(line)) pen=true;
+    if(command[1].toUpperCase()==="G0" && /(?:^|\\s)Z/i.test(line)) pen=false;
+    moves.push({x,y,z,draw:pen,fromX:oldX,fromY:oldY});
   }
   if(!moves.length)return;
   init3D();sim.moves=moves;
@@ -179,7 +180,7 @@ function init3D(){
   const carriage=beam(34,24,28,10,145,10,material(0x9de6c2));
   const pen=new THREE.Mesh(new THREE.CylinderGeometry(2,1.5,42,12),material(0xe9d7a4));scene.add(pen);
   const tip=new THREE.Mesh(new THREE.SphereGeometry(3,12,8),material(0x34e5a1));scene.add(tip);
-  const path=new THREE.Line(new THREE.BufferGeometry(),new THREE.LineBasicMaterial({color:0x42d99c}));scene.add(path);
+  const path=new THREE.LineSegments(new THREE.BufferGeometry(),new THREE.LineBasicMaterial({color:0x42d99c}));scene.add(path);
   const aim=new THREE.Vector3(110,20,110);let theta=.8,phi=1.0,radius=470,drag=false,lx=0,ly=0;
   const place=()=>{phi=Math.max(.15,Math.min(1.5,phi));camera.position.set(aim.x+radius*Math.sin(phi)*Math.sin(theta),aim.y+radius*Math.cos(phi),aim.z+radius*Math.sin(phi)*Math.cos(theta));camera.lookAt(aim);};place();
   renderer.domElement.addEventListener("pointerdown",e=>{drag=true;lx=e.clientX;ly=e.clientY;renderer.domElement.setPointerCapture(e.pointerId);});
@@ -199,7 +200,13 @@ function updateSimulation(index){
   const px=(m.x-s.originX-s.offsetX)*scale+10,pz=(m.y-s.originY-s.offsetY)*scale+10,py=12+(m.z-s.penDown)*scale;
   sim.carriage.position.set(px,145,pz);sim.pen.position.set(px,125,pz);sim.tip.position.set(px,py,pz);
   const points=[];
-  for(let i=0;i<=sim.index;i++){const q=sim.moves[i];if(q.draw)points.push(new THREE.Vector3((q.x-s.originX-s.offsetX)*scale+10,12,(q.y-s.originY-s.offsetY)*scale+10));}
+  for(let i=0;i<=sim.index;i++){
+    const q=sim.moves[i];
+    if(q.draw && (q.x!==q.fromX || q.y!==q.fromY)){
+      points.push(new THREE.Vector3((q.fromX-s.originX-s.offsetX)*scale+10,12,(q.fromY-s.originY-s.offsetY)*scale+10));
+      points.push(new THREE.Vector3((q.x-s.originX-s.offsetX)*scale+10,12,(q.y-s.originY-s.offsetY)*scale+10));
+    }
+  }
   sim.path.geometry.dispose();sim.path.geometry=new THREE.BufferGeometry().setFromPoints(points);
   $("simSlider").value=String(sim.index);
   $("simProgress").textContent=Math.round(sim.index/Math.max(1,sim.moves.length-1)*100)+"%";
