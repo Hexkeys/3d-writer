@@ -246,8 +246,8 @@ function setupSimulation(gcodeText) {
     const get=(axis,current)=>{const m=line.match(new RegExp("(?:^|\\s)"+axis+"([-+]?(?:\\d+\\.?\\d*|\\.\\d+))","i"));return m?Number(m[1]):current;};
     const oldX=x,oldY=y;
     x=get("X",x);y=get("Y",y);z=get("Z",z);
-    if(command[1].toUpperCase()==="G1" && /(?:^|\\s)Z/i.test(line)) pen=true;
-    if(command[1].toUpperCase()==="G0" && /(?:^|\\s)Z/i.test(line)) pen=false;
+    if(command[1].toUpperCase()==="G1" && /(?:^|\s)Z/i.test(line)) pen=true;
+    if(command[1].toUpperCase()==="G0" && /(?:^|\s)Z/i.test(line)) pen=false;
     moves.push({x,y,z,draw:pen,fromX:oldX,fromY:oldY});
   }
   if(!moves.length)return;
@@ -304,8 +304,9 @@ function updateSimulation(index){
   sim.index=Math.max(0,Math.min(sim.moves.length-1,Math.floor(index)));
   const s=settings(),m=sim.moves[sim.index];
   const usableW=s.bedWidth-2*s.margin,usableH=s.bedHeight-2*s.margin;
-  const scale=Math.min(220/Math.max(1,usableW),220/Math.max(1,usableH));
-  const px=(m.x-s.originX)*scale+10,pz=(m.y-s.originY)*scale+10;
+  const scale=Math.min(200/Math.max(1,usableW),200/Math.max(1,usableH));
+  // Map machine coordinates onto the 200 × 200 mm sheet, including the configured margin.
+  const px=(m.x-s.originX-s.margin)*scale+10,pz=(m.y-s.originY-s.margin)*scale+10;
   // Pen tip tracks the commanded Z height; at pen-down it touches the paper surface.
   const paperSurfaceY=4.35;
   const py=paperSurfaceY+(m.z-(s.penDown+s.offsetZ))*scale;
@@ -318,8 +319,8 @@ function updateSimulation(index){
   for(let i=0;i<=sim.index;i++){
     const q=sim.moves[i];
     if(q.draw && (q.x!==q.fromX || q.y!==q.fromY)){
-      points.push(new THREE.Vector3((q.fromX-s.originX)*scale+10,paperSurfaceY+0.15,(q.fromY-s.originY)*scale+10));
-      points.push(new THREE.Vector3((q.x-s.originX)*scale+10,paperSurfaceY+0.15,(q.y-s.originY)*scale+10));
+      points.push(new THREE.Vector3((q.fromX-s.originX-s.margin)*scale+10,paperSurfaceY+0.15,(q.fromY-s.originY-s.margin)*scale+10));
+      points.push(new THREE.Vector3((q.x-s.originX-s.margin)*scale+10,paperSurfaceY+0.15,(q.y-s.originY-s.margin)*scale+10));
     }
   }
   sim.path.geometry.dispose();sim.path.geometry=new THREE.BufferGeometry().setFromPoints(points);
