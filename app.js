@@ -143,6 +143,26 @@ $("threshold").addEventListener("input",()=>{ $("thresholdOut").value=$("thresho
 $("invert").addEventListener("change",()=>{try{drawPreview();}catch(e){$("status").textContent=e.message;}});
 for(const id of ["bedWidth","bedHeight","margin","lineSpacing","originX","originY","offsetX","offsetY","offsetZ","penUp","penDown","travelFeed","drawFeed","zFeed"]) $(id).addEventListener("change",()=>{try{drawPreview();}catch(e){$("status").textContent=e.message;}});
 
+// Keep the three offset sliders and numeric fields synchronized.
+for (const axis of ["X","Y","Z"]) {
+  const field = $("offset"+axis);
+  const slider = $("offset"+axis+"Slider");
+  const output = $("offset"+axis+"Out");
+  const syncFromField = () => {
+    const value = Number(field.value);
+    if (!Number.isFinite(value)) return;
+    slider.value = String(Math.max(Number(slider.min), Math.min(Number(slider.max), value)));
+    output.value = value.toFixed(1) + " mm";
+  };
+  slider.addEventListener("input", () => {
+    field.value = slider.value;
+    output.value = Number(slider.value).toFixed(1) + " mm";
+    try { drawPreview(); } catch (e) { $("status").textContent = e.message; }
+  });
+  field.addEventListener("input", syncFromField);
+  syncFromField();
+}
+
 function generateGcode() {
   const s=settings(); validate(s);
   if(!sourceCanvas) throw new Error("Upload a PDF or image first.");
