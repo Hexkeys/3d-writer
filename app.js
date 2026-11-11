@@ -48,33 +48,62 @@ async function loadPage() {
   if (!pdfDoc || renderBusy) return;
   renderBusy=true;
   try {
-    const pageNo = number("page");
-    if (!Number.isInteger(pageNo) || pageNo < 1 || pageNo > pdfDoc.numPages) throw new Error("Page number is outside this PDF.");
-    const page = await pdfDoc.getPage(pageNo);
-    const dpi = Math.min(300, Math.max(30, number("dpi")));
-    const viewport = page.getViewport({scale:dpi/72});
-    if (viewport.width*viewport.height > 20000000) throw new Error("Rendered page is too large. Try a lower DPI.");
-    const tmp = document.createElement("canvas");
-    tmp.width=Math.ceil(viewport.width); tmp.height=Math.ceil(viewport.height);
+    const pageNo=number("page");
+    if(!Number.isInteger(pageNo)||pageNo<1||pageNo>pdfDoc.numPages) throw new Error("Page number is outside this PDF.");
+    const page=await pdfDoc.getPage(pageNo);
+    const dpi=Math.min(300,Math.max(30,number("dpi")));
+    const viewport=page.getViewport({scale:dpi/72});
+    if(viewport.width*viewport.height>20000000) throw new Error("Rendered page is too large. Try a lower DPI.");
+    const tmp=document.createElement("canvas");
+    tmp.width=Math.ceil(viewport.width);tmp.height=Math.ceil(viewport.height);
     await page.render({canvas:tmp,viewport}).promise;
-    sourceCanvas=tmp;
-    canvas.width=tmp.width; canvas.height=tmp.height;
-    $("pageInfo").textContent = "Page "+pageNo+" of "+pdfDoc.numPages;
+    sourceCanvas=tmp;canvas.width=tmp.width;canvas.height=tmp.height;
+    $("pageInfo").textContent="Page "+pageNo+" of "+pdfDoc.numPages;
     drawPreview();
     $("status").textContent="PDF page ready. Adjust settings and generate your file.";
-  } catch(e) { $("status").textContent=e.message; }
-  finally { renderBusy=false; }
+  } catch(e){$("status").textContent=e.message;}
+  finally{renderBusy=false;}
 }
-$("pdfFile").addEventListener("change", async (event) => {
-  const file=event.target.files?.[0]; if(!file) return;
-  if(file.type!=="application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) { $("status").textContent="Please choose a PDF file."; return; }
+async function loadImage(file) {
+  let bitmap;
   try {
-    const bytes=await file.arrayBuffer();
-    pdfDoc=await pdfjsLib.getDocument({data:bytes}).promise;
-    $("fileLabel").textContent=file.name;
-    $("generate").disabled=false;
-    await loadPage();
-  } catch(e) { $("status").textContent="Could not read PDF: "+e.message; }
+    bitmap=await createImageBitmap(file);
+    const maxPixels=16000000,scale=Math.min(1,Math.sqrt(maxPixels/(bitmap.width*bitmap.height)));
+    const tmp=document.createElement("canvas");
+    tmp.width=Math.max(1,Math.round(bitmap.width*scale));
+    tmp.height=Math.max(1,Math.round(bitmap.height*scale));
+    tmp.getContext("2d",{willReadFrequently:true}).drawImage(bitmap,0,0,tmp.width,tmp.height);
+    sourceCanvas=tmp;
+  } finally {bitmap?.close?.();}
+  canvas.width=sourceCanvas.width;canvas.height=sourceCanvas.height;
+  $("pageInfo").textContent="Image · "+sourceCanvas.width+" × "+sourceCanvas.height;
+  $("status").textContent="Image ready. Adjust the ink threshold and generate your file.";
+  drawPreview();
+}
+$("pdfFile").addEventListener("change",async(event)=>{
+  const file=event.target.files?.[0];if(!file)return;
+  const isPdf=file.type==="application/pdf"||file.name.toLowerCase().endsWith(".pdf");
+  try {
+    if(isPdf){
+      pdfDoc=await pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise;
+      $("pdfOptions").hidden=false;
+      $("fileLabel").textContent=file.name;
+      $("generate").disabled=false;
+      await loadPage();
+    } else if(file.type.startsWith("image/")||/\.(jpe?g|png|webp|gif|bmp|avif|tiff?)$/i.test(file.name)){
+      pdfDoc=null;
+      $("pdfOptions").hidden=true;
+      $("fileLabel").textContent=file.name;
+      $("generate").disabled=true;
+      await loadImage(file);
+      $("generate").disabled=false;
+    } else {
+      throw new Error("Choose a PDF or browser-supported image (JPG, PNG, WEBP, GIF, BMP, AVIF or TIFF).");
+    }
+  } catch(e){
+    $("generate").disabled=true;
+    $("status").textContent="Could not open file: "+e.message;
+  }
 });
 $("page").addEventListener("change",loadPage);
 $("dpi").addEventListener("change",loadPage);
@@ -84,7 +113,7 @@ for(const id of ["bedWidth","bedHeight","margin","lineSpacing","originX","origin
 
 function generateGcode() {
   const s=settings(); validate(s);
-  if(!sourceCanvas) throw new Error("Upload a PDF first.");
+  if(!sourceCanvas) throw new Error("Upload a PDF or image first.");
   const w=sourceCanvas.width,h=sourceCanvas.height;
   const usableW=s.bedWidth-2*s.margin, usableH=s.bedHeight-2*s.margin;
   const scale=Math.min(usableW/w,usableH/h);
