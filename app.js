@@ -64,20 +64,52 @@ async function loadPage() {
   } catch(e){$("status").textContent=e.message;}
   finally{renderBusy=false;}
 }
-async function loadImage(file) {
-  let bitmap;
+async function decodeImageFile(file) {
+  // createImageBitmap is fast, but not available in every browser.
+  if (typeof createImageBitmap === "function") {
+    try {
+      const bitmap = await createImageBitmap(file);
+      return { image: bitmap, width: bitmap.width, height: bitmap.height, close: () => bitmap.close?.() };
+    } catch (error) {
+      // Try the HTMLImageElement decoder below (useful on browsers with partial support).
+    }
+  }
+  const url = URL.createObjectURL(file);
   try {
-    bitmap=await createImageBitmap(file);
-    const maxPixels=16000000,scale=Math.min(1,Math.sqrt(maxPixels/(bitmap.width*bitmap.height)));
-    const tmp=document.createElement("canvas");
-    tmp.width=Math.max(1,Math.round(bitmap.width*scale));
-    tmp.height=Math.max(1,Math.round(bitmap.height*scale));
-    tmp.getContext("2d",{willReadFrequently:true}).drawImage(bitmap,0,0,tmp.width,tmp.height);
-    sourceCanvas=tmp;
-  } finally {bitmap?.close?.();}
-  canvas.width=sourceCanvas.width;canvas.height=sourceCanvas.height;
-  $("pageInfo").textContent="Image · "+sourceCanvas.width+" × "+sourceCanvas.height;
-  $("status").textContent="Image ready. Adjust the ink threshold and generate your file.";
+    const image = new Image();
+    image.decoding = "async";
+    await new Promise((resolve, reject) => {
+      image.onload = resolve;
+      image.onerror = () => reject(new Error("This browser cannot decode this image. Try saving it as JPG or PNG."));
+      image.src = url;
+    });
+    return { image, width: image.naturalWidth, height: image.naturalHeight, close: () => URL.revokeObjectURL(url) };
+  } catch (error) {
+    URL.revokeObjectURL(url);
+    throw error;
+  }
+}
+async function loadImage(file) {
+  const decoded = await decodeImageFile(file);
+  try {
+    const width = decoded.width, height = decoded.height;
+    if (!width || !height) throw new Error("The image has no readable dimensions.");
+    const maxPixels = 12000000;
+    const scale = Math.min(1, Math.sqrt(maxPixels / (width * height)));
+    const tmp = document.createElement("canvas");
+    tmp.width = Math.max(1, Math.round(width * scale));
+    tmp.height = Math.max(1, Math.round(height * scale));
+    const imageContext = tmp.getContext("2d", { willReadFrequently: true });
+    if (!imageContext) throw new Error("Your browser could not create an image canvas.");
+    imageContext.drawImage(decoded.image, 0, 0, tmp.width, tmp.height);
+    sourceCanvas = tmp;
+  } finally {
+    decoded.close();
+  }
+  canvas.width = sourceCanvas.width;
+  canvas.height = sourceCanvas.height;
+  $("pageInfo").textContent = "Image · " + sourceCanvas.width + " × " + sourceCanvas.height;
+  $("status").textContent = "Image ready. Adjust the ink threshold and generate your file.";
   drawPreview();
 }
 $("pdfFile").addEventListener("change",async(event)=>{
