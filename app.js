@@ -288,11 +288,13 @@ function init3D(){
   for(const p of [[-8,-8],[228,-8],[-8,228],[228,228]])beam(7,185,7,p[0],92,p[1],frame);
   beam(245,7,7,110,185,-8,frame);beam(245,7,7,110,185,228,frame);
   beam(7,7,245,-8,185,110,frame);beam(7,7,245,228,185,110,frame);
-  beam(245,5,9,110,178,-8,dark);
+  // Moving X gantry: Z motion raises/lowers this beam and the complete attached head.
+  const gantryGroup=new THREE.Group();scene.add(gantryGroup);
+  beam(245,5,9,110,178,-8,dark,gantryGroup);
 
   // One rigid head assembly: the pen is fixed to the side of the toolhead.
-  // There is no separate pen actuator; Z moves the complete head and attached pen.
-  const headGroup=new THREE.Group();scene.add(headGroup);
+  // There is no separate pen actuator; Z moves the complete gantry and attached pen.
+  const headGroup=new THREE.Group();gantryGroup.add(headGroup);
   beam(34,24,28,0,145,0,material(0x9de6c2),headGroup);
   beam(13,24,13,-15,122,0,dark,headGroup);
   beam(5,18,5,-15,139,0,dark,headGroup);
@@ -312,7 +314,7 @@ function init3D(){
   renderer.domElement.addEventListener("pointerup",()=>drag=false);
   renderer.domElement.addEventListener("pointermove",e=>{if(!drag)return;theta-=(e.clientX-lx)*.008;phi+=(e.clientY-ly)*.008;lx=e.clientX;ly=e.clientY;place();});
   renderer.domElement.addEventListener("wheel",e=>{radius=Math.max(260,Math.min(900,radius+e.deltaY*.5));place();},{passive:true});
-  sim={scene,camera,renderer,bedGroup,headGroup,path,moves:[],index:0};
+  sim={scene,camera,renderer,bedGroup,gantryGroup,headGroup,path,moves:[],index:0};
   renderer.setAnimationLoop(()=>renderer.render(scene,camera));
   window.addEventListener("resize",()=>{if(!sim)return;camera.aspect=host.clientWidth/430;camera.updateProjectionMatrix();renderer.setSize(host.clientWidth,430);});
 }
@@ -326,7 +328,10 @@ function updateSimulation(index){
   // X moves the toolhead. Y moves the A1 bed underneath the fixed-Y toolhead.
   const headX=10+(m.x-s.originX-s.margin)*scale;
   const headZ=10-(s.originY+s.margin)*scale;
-  sim.headGroup.position.set(headX,paperSurfaceY+(m.z-(s.penDown+s.offsetZ))*scale,headZ);
+  // The pen stays rigidly attached. Z lifts the whole gantry/head assembly,
+  // so the pen clears the paper during G0 travel and touches only during drawing.
+  sim.headGroup.position.set(headX,paperSurfaceY,headZ);
+  sim.gantryGroup.position.y=(m.z-(s.penDown+s.offsetZ))*scale;
   sim.bedGroup.position.z=-m.y*scale;
 
   const points=[];
