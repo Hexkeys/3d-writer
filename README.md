@@ -48,3 +48,23 @@ python pdf_to_gcode.py artwork.pdf -o Gcode.txt \
 - Test first with the pen lifted and verify the path stays inside the bed. Then calibrate pen-up and pen-down heights on scrap paper.
 - `--pen-down` is a machine Z coordinate, not a force setting. Use a compliant pen holder/spring so the pen does not press hard into the paper.
 - The output is raster-scan plotting, not font tracing or vector path extraction. Very small text may need a higher DPI and smaller line spacing.
+
+
+## GitHub Pages web app
+
+A browser-based version is available at the repository root:
+
+- `index.html` — upload and preview a PDF
+- `app.js` — render PDF pages and generate G-code in the browser
+- `style.css` — interface styling
+- `.github/workflows/pages.yml` — deploy on every push to `main`
+
+### Enable deployment
+
+1. Open the repository on GitHub.
+2. Go to **Settings → Pages**.
+3. Under **Build and deployment → Source**, choose **GitHub Actions**.
+4. Open the **Actions** tab and wait for **Deploy 3D Writer to GitHub Pages** to finish.
+5. The published site will be at **https://hexkeys.github.io/3d-writer/**.
+
+The web app uses PDF.js from jsDelivr to read PDF pages. PDF content is processed in the browser; it is not sent to this repository or an application server. The Python command-line tool remains available separately.
