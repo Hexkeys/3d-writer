@@ -35,7 +35,7 @@ function drawPreview() {
   let count = 0;
   for (let i=0;i<data.length;i+=4) {
     const gray = Math.round(.299*data[i]+.587*data[i+1]+.114*data[i+2]);
-    const ink = gray < 255;
+    const ink = s.invert ? gray > s.threshold : gray <= s.threshold;
     const v = ink ? 30 : 255;
     out.data[i]=ink?26:255; out.data[i+1]=ink?93:255; out.data[i+2]=ink?66:255; out.data[i+3]=255;
     if (ink) count++;
