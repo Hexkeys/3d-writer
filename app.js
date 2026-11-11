@@ -205,14 +205,31 @@ function generateGcode() {
       strokes++;
     }
   }
+  if (strokes === 0) {
+    throw new Error("No pen strokes were detected. Try lowering the darkness threshold, turning on invert, or choosing a darker photo.");
+  }
   lines.push(`G0 Z${penUpZ.toFixed(3)} F${s.zFeed}`,"M5","M400","; End");
-  const gcodeText=lines.join("\n")+"\n";
-  setupSimulation(gcodeText);
+  const gcodeText=lines.join("\\n")+"\\n";
+
+  // Download is the primary action. A 3D/WebGL preview failure must never block G-code export.
   const blob=new Blob([gcodeText],{type:"text/plain;charset=utf-8"});
   const url=URL.createObjectURL(blob);
-  const a=document.createElement("a");a.href=url;a.download="Gcode.txt";a.click();URL.revokeObjectURL(url);
-  $("status").textContent=`Downloaded Gcode.txt · ${strokes.toLocaleString()} pen strokes.`;
+  const link=document.createElement("a");
+  link.href=url;
+  link.download="Gcode.txt";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(()=>URL.revokeObjectURL(url),1000);
+
   $("strokeCount").textContent=strokes.toLocaleString()+" strokes";
+  try {
+    setupSimulation(gcodeText);
+    $("status").textContent=`Downloaded Gcode.txt · ${strokes.toLocaleString()} pen strokes.`;
+  } catch (simulationError) {
+    console.error("3D preview could not be initialized:", simulationError);
+    $("status").textContent=`Downloaded Gcode.txt · ${strokes.toLocaleString()} pen strokes. 3D preview unavailable in this browser.`;
+  }
 }
 $("generate").addEventListener("click",()=>{try{generateGcode();}catch(e){$("status").textContent=e.message;}});
 
