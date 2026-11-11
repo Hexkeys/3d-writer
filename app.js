@@ -333,8 +333,8 @@ function updateSimulation(index){
   for(let i=0;i<=sim.index;i++){
     const q=sim.moves[i];
     if(q.draw && (q.x!==q.fromX || q.y!==q.fromY)){
-      points.push(new THREE.Vector3(10+(q.fromX-s.originX-s.margin)*scale,paperSurfaceY+0.2,10+(q.y-s.originY-s.margin)*scale));
-      points.push(new THREE.Vector3(10+(q.x-s.originX-s.margin)*scale,paperSurfaceY+0.2,10+(q.y-s.originY-s.margin)*scale));
+      points.push(new THREE.Vector3(10+(q.fromX-15-s.originX-s.margin)*scale,paperSurfaceY+0.2,10+(q.y-s.originY-s.margin)*scale));
+      points.push(new THREE.Vector3(10+(q.x-15-s.originX-s.margin)*scale,paperSurfaceY+0.2,10+(q.y-s.originY-s.margin)*scale));
     }
   }
   sim.path.geometry.dispose();sim.path.geometry=new THREE.BufferGeometry().setFromPoints(points);
