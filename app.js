@@ -221,7 +221,7 @@ function generateGcode(){
   const w=raster.width,h=raster.height,data=rc.getImageData(0,0,w,h).data,mask=new Uint8Array(w*h);
   for(let i=0,p=0;i<mask.length;i++,p+=4){const g=Math.round(.299*data[p]+.587*data[p+1]+.114*data[p+2]);mask[i]=s.invert?(g>s.threshold?1:0):(g<=s.threshold?1:0);}
   thinBinaryImage(mask,w,h);
-  let paths=orderPaths(skeletonToPaths(mask,w,h).map(a=>simplifyPath(a.map(i=>({x:i%w,y:Math.floor(i/w)})))).filter(p=>p.length>1));
+  let paths=orderPaths(skeletonToPaths(mask,w,h).map(a=>simplifyPath(a.map(i=>({x:i%w,y:Math.floor(i/w)})),s.lineSpacing)).filter(p=>p.length>1));
   if(!paths.length)throw new Error("No connected pen paths found. Try changing the darkness threshold or using a clearer image.");
   const uw=s.bedWidth-2*s.margin,uh=s.bedHeight-2*s.margin,scale=Math.min(uw/ow,uh/oh);
   const x0=s.originX+s.margin+(uw-ow*scale)/2+s.offsetX,y0=s.originY+s.margin+(uh-oh*scale)/2+s.offsetY;
