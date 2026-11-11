@@ -22,7 +22,7 @@ const settings = () => ({
   travelFeed: number("travelFeed"), drawFeed: number("drawFeed"), zFeed: number("zFeed")
 });
 function validate(s) {
-  if (s.bedWidth <= 0 || s.bedHeight <= 0 || s.margin < 0 || s.bedWidth <= 2*s.margin || s.bedHeight <= 2*s.margin) throw new Error("Bed size must be positive and larger than twice the margin.");
+  if (s.bedWidth <= 0 || s.bedHeight <= 0 || s.bedWidth > 256 || s.bedHeight > 256 || s.margin < 0 || s.bedWidth <= 2*s.margin || s.bedHeight <= 2*s.margin) throw new Error("The Bambu Lab A1 build area is 256 × 256 mm. Bed dimensions must stay within that limit and be larger than twice the margin.");
   if (s.lineSpacing <= 0 || s.travelFeed <= 0 || s.drawFeed <= 0 || s.zFeed <= 0) throw new Error("Line spacing and feed rates must be greater than zero.");
   if (s.threshold < 0 || s.threshold > 255) throw new Error("Threshold must be between 0 and 255.");
 }
@@ -230,6 +230,7 @@ function generateGcode(){
   let count=0,segments=0;
   for(const path of paths){const pts=path.map(p=>({x:x0+ow*scale-p.x*px,y:y0+oh*scale-p.y*px}));
     if(pts.length<2)continue;
+    if(pts.some(p=>p.x<0||p.y<0||p.x>256||p.y>256))throw new Error("A drawing path would leave the A1 256 × 256 mm build area. Reduce the image size, margins, or offsets.");
     lines.push("G0 Z"+up.toFixed(3)+" F"+s.zFeed,"G0 X"+pts[0].x.toFixed(3)+" Y"+pts[0].y.toFixed(3)+" F"+s.travelFeed,"G1 Z"+down.toFixed(3)+" F"+s.zFeed);
     for(let i=1;i<pts.length;i++){lines.push("G1 X"+pts[i].x.toFixed(3)+" Y"+pts[i].y.toFixed(3)+" F"+s.drawFeed);segments++;}
     count++;
@@ -273,90 +274,124 @@ function init3D(){
   if(sim?.renderer){sim.renderer.setAnimationLoop(null);sim.renderer.dispose();host.removeChild(sim.renderer.domElement);}
   $("simEmpty").style.display="none";
   const scene=new THREE.Scene();scene.background=new THREE.Color(0x0b1626);
-  const camera=new THREE.PerspectiveCamera(42,host.clientWidth/430,.1,1500);
-  camera.position.set(330,270,370);
+  const camera=new THREE.PerspectiveCamera(38,host.clientWidth/430,.1,3000);
   const renderer=new THREE.WebGLRenderer({antialias:true});
   renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));renderer.setSize(host.clientWidth,430);host.appendChild(renderer.domElement);
-  scene.add(new THREE.HemisphereLight(0xc9e5ff,0x263348,2));
-  const light=new THREE.DirectionalLight(0xffffff,2);light.position.set(160,280,180);scene.add(light);
-  const material=(color)=>new THREE.MeshStandardMaterial({color,roughness:.65});
-  const frame=material(0x9aaabd),dark=material(0x34465d),bedMat=material(0x26384e);
-  const beam=(w,h,d,x,y,z,mat,parent=scene)=>{const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);o.position.set(x,y,z);parent.add(o);return o;};
+  scene.add(new THREE.HemisphereLight(0xd9eaff,0x27364a,2.1));
+  const light=new THREE.DirectionalLight(0xffffff,2.2);light.position.set(220,520,300);scene.add(light);
+  const mat=(color,roughness=.65)=>new THREE.MeshStandardMaterial({color,roughness});
+  const frame=mat(0x9aaabd),dark=mat(0x34465d),baseMat=mat(0x25364b),bedMat=mat(0x34485e);
+  const beam=(w,h,d,x,y,z,m,parent=scene)=>{const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);o.position.set(x,y,z);parent.add(o);return o;};
+  const line=(points,color=0x62768d)=>{const g=new THREE.BufferGeometry().setFromPoints(points);const o=new THREE.Line(g,new THREE.LineBasicMaterial({color}));scene.add(o);return o;};
 
-  // A1-style bed-slinger: the Y axis moves the clipped paper/bed; the head travels in X.
-  const bedGroup=new THREE.Group();scene.add(bedGroup);
-  beam(230,5,230,110,0,110,bedMat,bedGroup);
-  const paperMat=new THREE.MeshStandardMaterial({color:0xf3f0e6,roughness:.92,side:THREE.DoubleSide});
-  const paper=new THREE.Mesh(new THREE.BoxGeometry(200,1.2,200),paperMat);
-  paper.position.set(110,3.6,110);bedGroup.add(paper);
-  const paperEdge=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(200,1.25,200)),new THREE.LineBasicMaterial({color:0xb8b5aa}));
-  paperEdge.position.copy(paper.position);bedGroup.add(paperEdge);
-  // Four visible clips hold the sheet to the moving build plate.
-  for(const [x,z] of [[13,13],[207,13],[13,207],[207,207]]){
-    beam(14,3,8,x,5.8,z,material(0x8aa6c2),bedGroup);
+  // Dimensional envelope: 465 W × 410 D × 430 H mm.
+  // One Three.js world unit equals one millimetre; moving mechanisms are a simplified reconstruction.
+  const W=465,D=410,H=430,bedLeft=(W-256)/2,bedFront=77,bedSurfaceY=60.8;
+  beam(W,20,D,W/2,10,D/2,baseMat);
+  // Feet and side structure.
+  for(const x of [24,W-24])for(const z of [22,D-22]){
+    beam(46,12,42,x,6,z,dark);
   }
-  // A1 frame and gantry.
-  for(const p of [[-8,-8],[228,-8],[-8,228],[228,228]])beam(7,185,7,p[0],92,p[1],frame);
-  beam(245,7,7,110,185,-8,frame);beam(245,7,7,110,185,228,frame);
-  beam(7,7,245,-8,185,110,frame);beam(7,7,245,228,185,110,frame);
-  // Moving X gantry: Z motion raises/lowers this beam and the complete attached head.
+  // Rear support columns and upper cross structure.
+  for(const x of [48,W-48]){
+    beam(18,370,18,x,215,28,frame);
+    beam(18,18,360,x,420,200,frame);
+  }
+  beam(W-70,18,18,W/2,420,28,frame);
+  beam(W-70,18,18,W/2,420,D-28,frame);
+  // Rear cross brace and small side details.
+  beam(18,18,D-56,48,398,D/2,dark);
+  beam(18,18,D-56,W-48,398,D/2,dark);
+
+  // A1-style moving bed: 256 × 256 mm plate translates along the Y travel axis.
+  const bedGroup=new THREE.Group();scene.add(bedGroup);
+  beam(256,8,256,128,4,128,bedMat,bedGroup);
+  beam(250,2,250,128,9,128,mat(0x4c6077),bedGroup);
+  const paperMat=mat(0xf3f0e6,.95);
+  const paper=new THREE.Mesh(new THREE.BoxGeometry(200,.8,200),paperMat);
+  paper.position.set(128,10.4,128);bedGroup.add(paper);
+  const paperEdge=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(200,.9,200)),new THREE.LineBasicMaterial({color:0xb8b5aa}));
+  paperEdge.position.copy(paper.position);bedGroup.add(paperEdge);
+  // Paper clips are illustrative and remain attached to the moving bed.
+  for(const [x,z] of [[28,28],[228,28],[28,228],[228,228]]){
+    beam(14,3,8,x,12,z,mat(0x8aa6c2),bedGroup);
+  }
+
+  // Moving X gantry and toolhead. The pen is fixed beside the nozzle, as on the holder.
   const gantryGroup=new THREE.Group();scene.add(gantryGroup);
-  beam(245,5,9,110,178,-8,dark,gantryGroup);
-
-  // One rigid head assembly: the pen is fixed to the side of the toolhead.
-  // There is no separate pen actuator; Z moves the complete gantry and attached pen.
+  beam(390,22,20,W/2,0,0,dark,gantryGroup);
+  beam(16,34,24,W/2,0,0,frame,gantryGroup);
   const headGroup=new THREE.Group();gantryGroup.add(headGroup);
-  beam(34,24,28,0,145,0,material(0x9de6c2),headGroup);
-  beam(13,24,13,-15,122,0,dark,headGroup);
-  beam(5,18,5,-15,139,0,dark,headGroup);
-  const pen=new THREE.Mesh(new THREE.CylinderGeometry(4.2,3.2,105,18),material(0xe9d7a4));
-  pen.position.set(-15,57,0);headGroup.add(pen);
-  const penBand=new THREE.Mesh(new THREE.CylinderGeometry(4.8,4.8,5,18),dark);
-  penBand.position.set(-15,89,0);headGroup.add(penBand);
-  const tip=new THREE.Mesh(new THREE.ConeGeometry(2.1,9,14),material(0x253044));
-  tip.rotation.z=Math.PI;tip.position.set(-15,4.5,0);headGroup.add(tip);
+  // The nozzle tip and pen tip share the same vertical calibration reference at 0 mm.
+  beam(48,54,42,0,-42,0,mat(0x9de6c2),headGroup);
+  beam(20,42,22,0,-86,0,dark,headGroup);
+  const nozzle=new THREE.Mesh(new THREE.CylinderGeometry(5,2.2,108,18),mat(0xc7d1dd));
+  nozzle.position.set(0,-145,0);headGroup.add(nozzle);
+  const nozzleTip=new THREE.Mesh(new THREE.ConeGeometry(2.4,9,16),mat(0x596779));
+  nozzleTip.rotation.z=Math.PI;nozzleTip.position.set(0,-199.5,0);headGroup.add(nozzleTip);
+  // Side-mounted holder + pen; fixed to the same moving head assembly.
+  beam(17,50,22,-25,-65,0,mat(0x657b91),headGroup);
+  beam(12,12,20,-25,-98,0,dark,headGroup);
+  const pen=new THREE.Mesh(new THREE.CylinderGeometry(4.2,3.2,100,18),mat(0xe9d7a4));
+  pen.position.set(-25,-149.5,0);headGroup.add(pen);
+  const penBand=new THREE.Mesh(new THREE.CylinderGeometry(5,5,5,18),dark);
+  penBand.position.set(-25,-113,0);headGroup.add(penBand);
+  const penTip=new THREE.Mesh(new THREE.ConeGeometry(2.2,9,14),mat(0x253044));
+  penTip.rotation.z=Math.PI;penTip.position.set(-25,-199.5,0);headGroup.add(penTip);
 
-  // Ink is drawn in paper-local coordinates, so it travels with the clipped sheet.
+  // Bed-local ink follows the paper while the bed moves under the fixed pen.
   const path=new THREE.LineSegments(new THREE.BufferGeometry(),new THREE.LineBasicMaterial({color:0x243047}));
   bedGroup.add(path);
-  const aim=new THREE.Vector3(110,35,110);let theta=.8,phi=1.0,radius=490,drag=false,lx=0,ly=0;
-  const place=()=>{phi=Math.max(.15,Math.min(1.5,phi));camera.position.set(aim.x+radius*Math.sin(phi)*Math.sin(theta),aim.y+radius*Math.cos(phi),aim.z+radius*Math.sin(phi)*Math.cos(theta));camera.lookAt(aim);};place();
+
+  const aim=new THREE.Vector3(W/2,180,D/2),theta=.78,phi=.96;
+  let angle=theta,elevation=phi,radius=850,drag=false,lx=0,ly=0;
+  const place=()=>{elevation=Math.max(.12,Math.min(1.48,elevation));camera.position.set(aim.x+radius*Math.sin(elevation)*Math.sin(angle),aim.y+radius*Math.cos(elevation),aim.z+radius*Math.sin(elevation)*Math.cos(angle));camera.lookAt(aim);};place();
   renderer.domElement.addEventListener("pointerdown",e=>{drag=true;lx=e.clientX;ly=e.clientY;renderer.domElement.setPointerCapture(e.pointerId);});
   renderer.domElement.addEventListener("pointerup",()=>drag=false);
-  renderer.domElement.addEventListener("pointermove",e=>{if(!drag)return;theta-=(e.clientX-lx)*.008;phi+=(e.clientY-ly)*.008;lx=e.clientX;ly=e.clientY;place();});
-  renderer.domElement.addEventListener("wheel",e=>{radius=Math.max(260,Math.min(900,radius+e.deltaY*.5));place();},{passive:true});
-  sim={scene,camera,renderer,bedGroup,gantryGroup,headGroup,path,moves:[],index:0};
+  renderer.domElement.addEventListener("pointercancel",()=>drag=false);
+  renderer.domElement.addEventListener("pointermove",e=>{if(!drag)return;angle-=(e.clientX-lx)*.006;elevation+=(e.clientY-ly)*.006;lx=e.clientX;ly=e.clientY;place();});
+  renderer.domElement.addEventListener("wheel",e=>{radius=Math.max(500,Math.min(1500,radius+e.deltaY*.7));place();},{passive:true});
+  sim={scene,camera,renderer,bedGroup,gantryGroup,headGroup,path,moves:[],index:0,bedLeft,bedFront,bedSurfaceY,manualZ:Number($("simPenHeight")?.value||0)};
   renderer.setAnimationLoop(()=>renderer.render(scene,camera));
   window.addEventListener("resize",()=>{if(!sim)return;camera.aspect=host.clientWidth/430;camera.updateProjectionMatrix();renderer.setSize(host.clientWidth,430);});
+  updatePenHeightControl();
+}
+function updatePenHeightControl(){
+  if(!sim?.gantryGroup)return;
+  const value=Number($("simPenHeight").value);
+  sim.manualZ=value;
+  $("simPenHeightOut").textContent=(value>0?"+":"")+value.toFixed(1)+" mm";
+  $("simPenHeightState").textContent=value===0
+    ?"0.0 mm · pen tip aligned with nozzle reference"
+    :(value>0?"Raised ":"Lowered ")+Math.abs(value).toFixed(1)+" mm from calibration reference";
+  const m=sim.moves?.[sim.index];
+  const down=number("penDown")+number("offsetZ");
+  const gcodeDelta=m?m.z-down:0;
+  sim.gantryGroup.position.y=260.8+gcodeDelta+value;
 }
 function updateSimulation(index){
   if(!sim?.moves?.length)return;
   sim.index=Math.max(0,Math.min(sim.moves.length-1,Math.floor(index)));
   const s=settings(),m=sim.moves[sim.index];
-  const usableW=s.bedWidth-2*s.margin,usableH=s.bedHeight-2*s.margin;
-  const scale=Math.min(200/Math.max(1,usableW),200/Math.max(1,usableH));
-  const paperSurfaceY=4.35;
-  // X moves the toolhead. Y moves the A1 bed underneath the fixed-Y toolhead.
-  const headX=10+(m.x-s.originX-s.margin)*scale;
-  const headZ=10-(s.originY+s.margin)*scale;
-  // The pen stays rigidly attached. Z lifts the whole gantry/head assembly,
-  // so the pen clears the paper during G0 travel and touches only during drawing.
-  sim.headGroup.position.set(headX,paperSurfaceY,headZ);
-  sim.gantryGroup.position.y=(m.z-(s.penDown+s.offsetZ))*scale;
-  sim.bedGroup.position.z=-m.y*scale;
-
+  const headX=sim.bedLeft+m.x+25;
+  // The bed moves in Y; the fixed pen stays over the selected bed-local Y coordinate.
+  sim.headGroup.position.set(headX,0,sim.bedFront);
+  const down=s.penDown+s.offsetZ;
+  sim.gantryGroup.position.y=sim.bedSurfaceY+200+(m.z-down)+sim.manualZ;
+  sim.bedGroup.position.set(sim.bedLeft,52,sim.bedFront-m.y);
   const points=[];
   for(let i=0;i<=sim.index;i++){
     const q=sim.moves[i];
-    if(q.draw && (q.x!==q.fromX || q.y!==q.fromY)){
-      points.push(new THREE.Vector3(10+(q.fromX-15-s.originX-s.margin)*scale,paperSurfaceY+0.2,10+(q.y-s.originY-s.margin)*scale));
-      points.push(new THREE.Vector3(10+(q.x-15-s.originX-s.margin)*scale,paperSurfaceY+0.2,10+(q.y-s.originY-s.margin)*scale));
+    if(q.draw&&(q.x!==q.fromX||q.y!==q.fromY)){
+      points.push(new THREE.Vector3(q.fromX,10.9,q.y));
+      points.push(new THREE.Vector3(q.x,10.9,q.y));
     }
   }
   sim.path.geometry.dispose();sim.path.geometry=new THREE.BufferGeometry().setFromPoints(points);
   $("simSlider").value=String(sim.index);
   $("simProgress").textContent=Math.round(sim.index/Math.max(1,sim.moves.length-1)*100)+"%";
   $("simStatus").textContent=(sim.index+1).toLocaleString()+" / "+sim.moves.length.toLocaleString()+" moves";
+  updatePenHeightControl();
 }
 function stopSim(){if(simTimer){clearInterval(simTimer);simTimer=null;} $("simPlay").textContent="▶ Play";}
 $("simPlay").addEventListener("click",()=>{
@@ -367,3 +402,6 @@ $("simPlay").addEventListener("click",()=>{
   simTimer=setInterval(()=>{const step=Math.max(1,Math.round(Number($("simSpeed").value)));const next=sim.index+step;if(next>=sim.moves.length-1){updateSimulation(sim.moves.length-1);stopSim();}else updateSimulation(next);},45);
 });
 $("simSlider").addEventListener("input",()=>{stopSim();updateSimulation(Number($("simSlider").value));});
+$("simPenHeight").addEventListener("input",()=>{if(sim?.moves?.length)updateSimulation(sim.index);else updatePenHeightControl();});
+// Show the A1 model and pen-height control immediately, before a file is generated.
+try{init3D();}catch(e){console.warn("3D model could not initialize:",e);$("simStatus").textContent="3D preview unavailable in this browser";}
