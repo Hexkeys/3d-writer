@@ -67,10 +67,10 @@ def main() -> None:
 
     # Convert physical line spacing into rows in the resized image.
     row_step = max(1, round(a.line_spacing * height / draw_h))
-    x0 = a.origin_x + a.margin + a.pen_offset_x
-    y0 = a.origin_y + a.margin + a.pen_offset_y
-    mm_per_px_x = draw_w / width
-    mm_per_px_y = draw_h / height
+    # Preserve the PDF aspect ratio and center it in the usable drawing area.
+    mm_per_px = min(draw_w / width, draw_h / height)
+    x0 = a.origin_x + a.margin + (draw_w - width * mm_per_px) / 2 + a.pen_offset_x
+    y0 = a.origin_y + a.margin + (draw_h - height * mm_per_px) / 2 + a.pen_offset_y
 
     lines = [
         "; PDF raster pen plotter output",
@@ -104,12 +104,12 @@ def main() -> None:
         # Alternate scan direction to reduce unnecessary long travel moves.
         if row_index % 2:
             runs.reverse()
-        y_mm = y0 + (height - 1 - y) * mm_per_px_y
+        y_mm = y0 + (height - 1 - y) * mm_per_px
         for start, end in runs:
+            xa = x0 + start * mm_per_px
+            xb = x0 + end * mm_per_px
             if row_index % 2:
-                start, end = width - 1 - end, width - 1 - start
-            xa = x0 + start * mm_per_px_x
-            xb = x0 + end * mm_per_px_x
+                xa, xb = xb, xa
             lines.append(f"G0 Z{a.pen_up:.3f} F{a.z_feed}")
             lines.append(f"G0 X{xa:.3f} Y{y_mm:.3f} F{a.travel_feed}")
             lines.append(f"G1 Z{a.pen_down:.3f} F{a.z_feed}")
