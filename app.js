@@ -334,6 +334,6 @@ $("simPlay").addEventListener("click",()=>{
   if(simTimer){stopSim();return;}
   if(sim.index>=sim.moves.length-1)updateSimulation(0);
   $("simPlay").textContent="Ⅱ Pause";
-  simTimer=setInterval(()=>{const step=Math.max(1,Math.round(Number($("simSpeed").value)*Math.max(1,sim.moves.length/1800)));const next=sim.index+step;if(next>=sim.moves.length-1){updateSimulation(sim.moves.length-1);stopSim();}else updateSimulation(next);},30);
+  simTimer=setInterval(()=>{const step=Math.max(1,Math.round(Number($("simSpeed").value)));const next=sim.index+step;if(next>=sim.moves.length-1){updateSimulation(sim.moves.length-1);stopSim();}else updateSimulation(next);},45);
 });
 $("simSlider").addEventListener("input",()=>{stopSim();updateSimulation(Number($("simSlider").value));});
