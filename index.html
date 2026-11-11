@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101827">
+  <title>3D Writer — PDF to G-code</title>
+  <meta name="description" content="Turn PDF pages into pen-plotter G-code for a 3D printer.">
+  <link rel="stylesheet" href="style.css">
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="./"><span class="brand-mark">✳</span><span>3D Writer</span></a>
+    <a class="repo-link" href="https://github.com/Hexkeys/3d-writer" target="_blank" rel="noreferrer">View on GitHub ↗</a>
+  </header>
+  <main class="shell">
+    <section class="intro">
+      <p class="eyebrow">PDF → PEN PLOTTER</p>
+      <h1>Make your printer <span>write.</span></h1>
+      <p class="subhead">Upload a PDF, tune the pen and printer settings, preview the marks, then export a G-code file.</p>
+    </section>
+    <section class="workspace">
+      <div class="panel controls">
+        <div class="panel-heading"><div><p class="eyebrow">01 / SOURCE</p><h2>Your document</h2></div></div>
+        <label class="upload" for="pdfFile"><span class="upload-icon">＋</span><strong id="fileLabel">Choose a PDF</strong><small>PDF files are processed locally in your browser</small></label>
+        <input id="pdfFile" type="file" accept="application/pdf,.pdf" hidden>
+        <div class="field-grid">
+          <label>PDF page<input id="page" type="number" min="1" value="1"></label>
+          <label>Render DPI<input id="dpi" type="number" min="30" max="300" value="150"></label>
+        </div>
+        <div class="section-rule"></div>
+        <div class="panel-heading"><div><p class="eyebrow">02 / IMAGE</p><h2>Ink detection</h2></div></div>
+        <label class="range-label"><span>Darkness threshold</span><output id="thresholdOut">200</output></label>
+        <input id="threshold" type="range" min="0" max="255" value="200">
+        <p class="hint">Pixels at or below this gray value become pen strokes. Lower values select only darker pixels.</p>
+        <label class="check"><input id="invert" type="checkbox"> Draw light areas instead</label>
+        <div class="section-rule"></div>
+        <div class="panel-heading"><div><p class="eyebrow">03 / MACHINE</p><h2>Drawing area</h2></div></div>
+        <div class="field-grid">
+          <label>Bed width (mm)<input id="bedWidth" type="number" min="1" step="0.1" value="220"></label>
+          <label>Bed height (mm)<input id="bedHeight" type="number" min="1" step="0.1" value="220"></label>
+          <label>Margin (mm)<input id="margin" type="number" min="0" step="0.1" value="5"></label>
+          <label>Line spacing (mm)<input id="lineSpacing" type="number" min="0.05" step="0.05" value="0.35"></label>
+          <label>Origin X (mm)<input id="originX" type="number" step="0.1" value="0"></label>
+          <label>Origin Y (mm)<input id="originY" type="number" step="0.1" value="0"></label>
+          <label>Pen offset X (mm)<input id="offsetX" type="number" step="0.1" value="0"></label>
+          <label>Pen offset Y (mm)<input id="offsetY" type="number" step="0.1" value="0"></label>
+        </div>
+        <div class="section-rule"></div>
+        <div class="panel-heading"><div><p class="eyebrow">04 / PEN & SPEED</p><h2>Movement settings</h2></div></div>
+        <div class="field-grid">
+          <label>Pen up Z (mm)<input id="penUp" type="number" step="0.1" value="5"></label>
+          <label>Pen down Z (mm)<input id="penDown" type="number" step="0.1" value="0"></label>
+          <label>Travel speed (mm/min)<input id="travelFeed" type="number" min="1" value="3000"></label>
+          <label>Draw speed (mm/min)<input id="drawFeed" type="number" min="1" value="1200"></label>
+          <label>Z speed (mm/min)<input id="zFeed" type="number" min="1" value="300"></label>
+        </div>
+        <button id="generate" class="primary" disabled>Generate G-code <span>↓</span></button>
+        <p id="status" class="status" aria-live="polite">Upload a PDF to get started.</p>
+      </div>
+      <div class="panel preview-panel">
+        <div class="preview-head"><div><p class="eyebrow">LIVE PREVIEW</p><h2>Drawing preview</h2></div><span id="pageInfo" class="pill">No PDF loaded</span></div>
+        <div class="preview-stage"><canvas id="preview" width="800" height="800"></canvas><div id="emptyState" class="empty-state"><span>▧</span><strong>Your page will appear here</strong><small>Upload a PDF to preview the pen path</small></div></div>
+        <div class="preview-foot"><span><i class="dot"></i> Detected ink</span><span id="strokeCount">0 strokes</span></div>
+        <div class="notice"><strong>Before you run it</strong><p>This creates generic Marlin-style G-code. It does not home or probe your printer. Verify the bed coordinates and test the path with the pen lifted first. Calibrate Z heights and offsets for your pen holder.</p></div>
+      </div>
+    </section>
+    <footer>Runs in your browser · Your PDF is not uploaded to a server</footer>
+  </main>
+</body>
+</html>
