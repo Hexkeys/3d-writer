@@ -262,40 +262,57 @@ function init3D(){
   if(sim?.renderer){sim.renderer.setAnimationLoop(null);sim.renderer.dispose();host.removeChild(sim.renderer.domElement);}
   $("simEmpty").style.display="none";
   const scene=new THREE.Scene();scene.background=new THREE.Color(0x0b1626);
-  scene.add(new THREE.GridHelper(240,24,0x52708c,0x263b54));
   const camera=new THREE.PerspectiveCamera(42,host.clientWidth/430,.1,1500);
-  camera.position.set(300,260,330);
+  camera.position.set(330,270,370);
   const renderer=new THREE.WebGLRenderer({antialias:true});
   renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));renderer.setSize(host.clientWidth,430);host.appendChild(renderer.domElement);
   scene.add(new THREE.HemisphereLight(0xc9e5ff,0x263348,2));
   const light=new THREE.DirectionalLight(0xffffff,2);light.position.set(160,280,180);scene.add(light);
   const material=(color)=>new THREE.MeshStandardMaterial({color,roughness:.65});
   const frame=material(0x9aaabd),dark=material(0x34465d),bedMat=material(0x26384e);
-  const beam=(w,h,d,x,y,z,mat)=>{const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);o.position.set(x,y,z);scene.add(o);return o;};
-  // Printer bed and a clearly visible sheet of paper sitting on top.
-  beam(230,5,230,110,0,110,bedMat);
+  const beam=(w,h,d,x,y,z,mat,parent=scene)=>{const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);o.position.set(x,y,z);parent.add(o);return o;};
+
+  // A1-style bed-slinger: the Y axis moves the clipped paper/bed; the head travels in X.
+  const bedGroup=new THREE.Group();scene.add(bedGroup);
+  beam(230,5,230,110,0,110,bedMat,bedGroup);
   const paperMat=new THREE.MeshStandardMaterial({color:0xf3f0e6,roughness:.92,side:THREE.DoubleSide});
   const paper=new THREE.Mesh(new THREE.BoxGeometry(200,1.2,200),paperMat);
-  paper.position.set(110,3.6,110);scene.add(paper);
+  paper.position.set(110,3.6,110);bedGroup.add(paper);
   const paperEdge=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(200,1.25,200)),new THREE.LineBasicMaterial({color:0xb8b5aa}));
-  paperEdge.position.copy(paper.position);scene.add(paperEdge);
+  paperEdge.position.copy(paper.position);bedGroup.add(paperEdge);
+  // Four visible clips hold the sheet to the moving build plate.
+  for(const [x,z] of [[13,13],[207,13],[13,207],[207,207]]){
+    beam(14,3,8,x,5.8,z,material(0x8aa6c2),bedGroup);
+  }
+  // A1 frame and gantry.
   for(const p of [[-8,-8],[228,-8],[-8,228],[228,228]])beam(7,185,7,p[0],92,p[1],frame);
   beam(245,7,7,110,185,-8,frame);beam(245,7,7,110,185,228,frame);
   beam(7,7,245,-8,185,110,frame);beam(7,7,245,228,185,110,frame);
-  const carriage=beam(34,24,28,10,145,10,material(0x9de6c2));
-  // Pen holder, long pen barrel, collar, and fine writing tip.
-  const holder=beam(13,24,13,10,127,10,dark);
-  const pen=new THREE.Mesh(new THREE.CylinderGeometry(4.2,3.2,105,18),material(0xe9d7a4));scene.add(pen);
-  const penBand=new THREE.Mesh(new THREE.CylinderGeometry(4.8,4.8,5,18),material(0x34465d));scene.add(penBand);
-  const tip=new THREE.Mesh(new THREE.ConeGeometry(2.1,9,14),material(0x253044));tip.rotation.z=Math.PI;scene.add(tip);
-  const path=new THREE.LineSegments(new THREE.BufferGeometry(),new THREE.LineBasicMaterial({color:0x243047}));scene.add(path);
-  const aim=new THREE.Vector3(110,20,110);let theta=.8,phi=1.0,radius=470,drag=false,lx=0,ly=0;
+  beam(245,5,9,110,178,-8,dark);
+
+  // One rigid head assembly: the pen is fixed to the side of the toolhead.
+  // There is no separate pen actuator; Z moves the complete head and attached pen.
+  const headGroup=new THREE.Group();scene.add(headGroup);
+  beam(34,24,28,0,145,0,material(0x9de6c2),headGroup);
+  beam(13,24,13,-15,122,0,dark,headGroup);
+  beam(5,18,5,-15,139,0,dark,headGroup);
+  const pen=new THREE.Mesh(new THREE.CylinderGeometry(4.2,3.2,105,18),material(0xe9d7a4));
+  pen.position.set(-15,57,0);headGroup.add(pen);
+  const penBand=new THREE.Mesh(new THREE.CylinderGeometry(4.8,4.8,5,18),dark);
+  penBand.position.set(-15,89,0);headGroup.add(penBand);
+  const tip=new THREE.Mesh(new THREE.ConeGeometry(2.1,9,14),material(0x253044));
+  tip.rotation.z=Math.PI;tip.position.set(-15,4.5,0);headGroup.add(tip);
+
+  // Ink is drawn in paper-local coordinates, so it travels with the clipped sheet.
+  const path=new THREE.LineSegments(new THREE.BufferGeometry(),new THREE.LineBasicMaterial({color:0x243047}));
+  bedGroup.add(path);
+  const aim=new THREE.Vector3(110,35,110);let theta=.8,phi=1.0,radius=490,drag=false,lx=0,ly=0;
   const place=()=>{phi=Math.max(.15,Math.min(1.5,phi));camera.position.set(aim.x+radius*Math.sin(phi)*Math.sin(theta),aim.y+radius*Math.cos(phi),aim.z+radius*Math.sin(phi)*Math.cos(theta));camera.lookAt(aim);};place();
   renderer.domElement.addEventListener("pointerdown",e=>{drag=true;lx=e.clientX;ly=e.clientY;renderer.domElement.setPointerCapture(e.pointerId);});
   renderer.domElement.addEventListener("pointerup",()=>drag=false);
   renderer.domElement.addEventListener("pointermove",e=>{if(!drag)return;theta-=(e.clientX-lx)*.008;phi+=(e.clientY-ly)*.008;lx=e.clientX;ly=e.clientY;place();});
-  renderer.domElement.addEventListener("wheel",e=>{radius=Math.max(260,Math.min(850,radius+e.deltaY*.5));place();},{passive:true});
-  sim={scene,camera,renderer,carriage,holder,pen,penBand,tip,path,moves:[],index:0};
+  renderer.domElement.addEventListener("wheel",e=>{radius=Math.max(260,Math.min(900,radius+e.deltaY*.5));place();},{passive:true});
+  sim={scene,camera,renderer,bedGroup,headGroup,path,moves:[],index:0};
   renderer.setAnimationLoop(()=>renderer.render(scene,camera));
   window.addEventListener("resize",()=>{if(!sim)return;camera.aspect=host.clientWidth/430;camera.updateProjectionMatrix();renderer.setSize(host.clientWidth,430);});
 }
@@ -305,22 +322,19 @@ function updateSimulation(index){
   const s=settings(),m=sim.moves[sim.index];
   const usableW=s.bedWidth-2*s.margin,usableH=s.bedHeight-2*s.margin;
   const scale=Math.min(200/Math.max(1,usableW),200/Math.max(1,usableH));
-  // Map machine coordinates onto the 200 × 200 mm sheet, including the configured margin.
-  const px=(m.x-s.originX-s.margin)*scale+10,pz=(m.y-s.originY-s.margin)*scale+10;
-  // Pen tip tracks the commanded Z height; at pen-down it touches the paper surface.
   const paperSurfaceY=4.35;
-  const py=paperSurfaceY+(m.z-(s.penDown+s.offsetZ))*scale;
-  sim.carriage.position.set(px,145,pz);
-  sim.holder.position.set(px,127,pz);
-  sim.pen.position.set(px,py+52.5,pz);
-  sim.penBand.position.set(px,py+89,pz);
-  sim.tip.position.set(px,py+4.5,pz);
+  // X moves the toolhead. Y moves the A1 bed underneath the fixed-Y toolhead.
+  const headX=10+(m.x-s.originX-s.margin)*scale;
+  const headZ=10-(s.originY+s.margin)*scale;
+  sim.headGroup.position.set(headX,paperSurfaceY+(m.z-(s.penDown+s.offsetZ))*scale,headZ);
+  sim.bedGroup.position.z=-m.y*scale;
+
   const points=[];
   for(let i=0;i<=sim.index;i++){
     const q=sim.moves[i];
     if(q.draw && (q.x!==q.fromX || q.y!==q.fromY)){
-      points.push(new THREE.Vector3((q.fromX-s.originX-s.margin)*scale+10,paperSurfaceY+0.15,(q.fromY-s.originY-s.margin)*scale+10));
-      points.push(new THREE.Vector3((q.x-s.originX-s.margin)*scale+10,paperSurfaceY+0.15,(q.y-s.originY-s.margin)*scale+10));
+      points.push(new THREE.Vector3(10+(q.fromX-s.originX-s.margin)*scale,paperSurfaceY+0.2,10+(q.y-s.originY-s.margin)*scale));
+      points.push(new THREE.Vector3(10+(q.x-s.originX-s.margin)*scale,paperSurfaceY+0.2,10+(q.y-s.originY-s.margin)*scale));
     }
   }
   sim.path.geometry.dispose();sim.path.geometry=new THREE.BufferGeometry().setFromPoints(points);
