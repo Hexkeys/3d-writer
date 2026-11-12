@@ -44,6 +44,13 @@
           <p><strong>Calibration order:</strong> (1) Confirm the pen is mounted at the FRONT of the nozzle. (2) Measure the pen tip's X and front/back Y displacement from the nozzle tip. (3) Measure the vertical pen-tip offset and safe up/down heights with the machine safely powered down / under qualified supervision. (4) Enter the values below, verify the coordinate signs against the A1's documented coordinate directions, and inspect the compensated nozzle path. (5) Only then acknowledge calibration. This software cannot sense or auto-measure the physical offsets.</p>
           <p>The initial 180 × 180 mm software envelope is a cautious placeholder, not a verified map of the A1's wiper, cutter, clips, frame, or pen-holder clearance. The A1 coordinate convention and firmware workflow must be confirmed independently.</p>
           <label class="check a1-ack"><input id="a1CalibrationAck" type="checkbox"> I have independently measured the pen offsets and Z heights, verified the coordinate origin and physical keep-out area, and understand this is only a motion review file—not a ready-to-print job.</label>
+          <div class="template-picker">
+            <strong>Bambu Studio file wrapper</strong>
+            <p>Select a .gcode.3mf template exported from Bambu Studio using the A1 profile. The app replaces the plate G-code while preserving the package structure. This makes the file importable in Studio; it does not validate the machine commands or make the file safe to run.</p>
+            <label for="bambuTemplate">Bambu Studio .gcode.3mf template</label>
+            <input id="bambuTemplate" type="file" accept=".gcode.3mf,application/zip">
+            <small id="bambuTemplateStatus" aria-live="polite">No Bambu Studio template selected.</small>
+          </div>
         </div>
         <div class="field-grid">
           <label>Bed width (mm)<input id="bedWidth" type="number" min="1" max="256" step="0.1" value="256"></label>
