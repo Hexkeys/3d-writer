@@ -368,7 +368,7 @@ function init3D(){
   // Photo-based side-mounted spring pen holder reconstruction.
   // This is a visual approximation of the uploaded holder, not an exact CAD assembly.
   const holderWhite=mat(0xe8e2d8,.82),holderShadow=mat(0xc9c2b8,.82),penBlack=mat(0x171b20,.5),springMetal=mat(0x9ba5ae,.42);
-  const holderAssembly=new THREE.Group();holderAssembly.position.x=Number($("offsetX").value)||-25;headGroup.add(holderAssembly);
+  const holderAssembly=new THREE.Group();holderAssembly.position.x=-25+Number($("offsetX").value);headGroup.add(holderAssembly);
   const mountX=0;
   // Tall molded holder body beside the nozzle, with a recessed central pen channel.
   beam(39,122,48,mountX,-91,0,holderWhite,holderAssembly);
@@ -428,7 +428,7 @@ function updatePenHeightControl(){
   sim.gantryGroup.position.y=260.8+gcodeDelta+value;
   // Reflect the configured lateral pen offset in the mounted-holder visualization.
   const holder=sim.headGroup.children;
-  if(sim.holderAssembly) sim.holderAssembly.position.x=Number($("offsetX").value)||-25;
+  if(sim.holderAssembly) sim.holderAssembly.position.x=-25+Number($("offsetX").value);
 }
 function updateSimulation(index){
   if(!sim?.moves?.length)return;
