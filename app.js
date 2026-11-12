@@ -313,8 +313,8 @@ async function generateGcode(){
   if(isA1){
     if(!bambuTemplateFile)throw new Error("Select a Bambu Studio .gcode.3mf template first. The app needs a template exported by your own A1 printer profile to create a Studio-openable package.");
     const zip=await JSZip.loadAsync(await bambuTemplateFile.arrayBuffer());
-    const candidates=Object.keys(zip.files).filter(name=>/^Metadata\\/plate_\\d+\\.gcode$/i.test(name)&&!zip.files[name].dir);
-    const target=candidates.find(name=>/plate_1\\.gcode$/i.test(name))||candidates[0];
+    const candidates=Object.keys(zip.files).filter(name=>/^Metadata\/plate_\d+\.gcode$/i.test(name)&&!zip.files[name].dir);
+    const target=candidates.find(name=>/plate_1\.gcode$/i.test(name))||candidates[0];
     if(!target)throw new Error("That template has no Metadata/plate_N.gcode file. Export a sliced plate as a .gcode.3mf file from Bambu Studio and select it.");
     zip.file(target,text);
     downloadBlob=await zip.generateAsync({type:"blob",mimeType:"application/vnd.ms-package.3dmanufacturing-3dmodel+zip",compression:"DEFLATE",compressionOptions:{level:6}});
