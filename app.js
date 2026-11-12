@@ -103,7 +103,7 @@ async function loadPage() {
     $("pageInfo").textContent="Page "+pageNo+" of "+pdfDoc.numPages;
     drawPreview();
     $("status").textContent="PDF page ready. Adjust settings and generate your file.";
-  } catch(e){$("status").textContent=e.message;}
+  } catch(e){console.error("PDF page load failed:",e);$("status").textContent="PDF preview error: "+(e?.message||String(e));}
   finally{renderBusy=false;}
 }
 async function decodeImageFile(file) {
@@ -175,8 +175,9 @@ $("pdfFile").addEventListener("change",async(event)=>{
       throw new Error("Choose a PDF or browser-supported image (JPG, PNG, WEBP, GIF, BMP, AVIF or TIFF).");
     }
   } catch(e){
+    console.error("File selection failed:",e);
     $("generate").disabled=true;
-    $("status").textContent="Could not open file: "+e.message;
+    $("status").textContent="Could not open file: "+(e?.message||String(e));
   }
 });
 $("page").addEventListener("change",loadPage);
@@ -240,7 +241,9 @@ function drawPlateEditor() {
   for(let x=1;x< s.bedWidth/10;x++){const xx=left+x*10*scale;plateCtx.beginPath();plateCtx.moveTo(xx,top);plateCtx.lineTo(xx,top+bh);plateCtx.stroke();}
   for(let y=1;y< s.bedHeight/10;y++){const yy=top+y*10*scale;plateCtx.beginPath();plateCtx.moveTo(left,yy);plateCtx.lineTo(left+bw,yy);plateCtx.stroke();}
   const ow=sourceCanvas.width,oh=sourceCanvas.height,uw=s.bedWidth-2*s.margin,uh=s.bedHeight-2*s.margin;
-  const src=sourceCanvas.getContext("2d",{willReadFrequently:true}).getImageData(0,0,ow,oh).data;
+  const sourceContext=sourceCanvas.getContext("2d",{willReadFrequently:true});
+  if(!sourceContext) throw new Error("Plate editor: source PDF canvas has no 2D context.");
+  const src=sourceContext.getImageData(0,0,ow,oh).data;
   let minX=ow,minY=oh,maxX=-1,maxY=-1;
   for(let yy=0;yy<oh;yy++)for(let xx=0;xx<ow;xx++){const i=(yy*ow+xx)*4,g=Math.round(.299*src[i]+.587*src[i+1]+.114*src[i+2]);if(s.invert?g>s.threshold:g<=s.threshold){minX=Math.min(minX,xx);minY=Math.min(minY,yy);maxX=Math.max(maxX,xx);maxY=Math.max(maxY,yy);}}
   if(maxX<minX||maxY<minY)return;
@@ -248,7 +251,9 @@ function drawPlateEditor() {
   const x=left+(s.margin+(uw-drawnW)/2+s.placementX)*scale;
   const y=top+(s.bedHeight-(s.margin+(uh-drawnH)/2+s.placementY))*scale-dh;
   const temp=document.createElement("canvas");temp.width=cropW;temp.height=cropH;
-  const tc=temp.getContext("2d",{willReadFrequently:true}),out=tc.createImageData(cropW,cropH);
+  const tc=temp.getContext("2d",{willReadFrequently:true});
+  if(!tc) throw new Error("Plate editor: browser could not create the cropped-image canvas context.");
+  const out=tc.createImageData(cropW,cropH);
   for(let yy=0;yy<cropH;yy++)for(let xx=0;xx<cropW;xx++){const i=((minY+yy)*ow+minX+xx)*4,j=(yy*cropW+xx)*4,g=Math.round(.299*src[i]+.587*src[i+1]+.114*src[i+2]);const ink=s.invert?g>s.threshold:g<=s.threshold;out.data[j]=20;out.data[j+1]=35;out.data[j+2]=48;out.data[j+3]=ink?255:0;}
   tc.putImageData(out,0,0);
   plateCtx.save();
