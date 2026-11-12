@@ -253,7 +253,10 @@ function generateGcode(){
   let paths=orderPaths(skeletonToPaths(mask,w,h).map(a=>simplifyPath(a.map(i=>({x:i%w,y:Math.floor(i/w)})),s.lineSpacing)).filter(p=>p.length>1));
   if(!paths.length)throw new Error("No connected pen paths found. Try changing the darkness threshold or using a clearer image.");
   const uw=s.bedWidth-2*s.margin,uh=s.bedHeight-2*s.margin,scale=Math.min(uw/ow,uh/oh);
-  const x0=s.originX+s.margin+(uw-ow*scale)/2+s.offsetX,y0=s.originY+s.margin+(uh-oh*scale)/2+s.offsetY;
+  // Image coordinates describe the desired PEN TIP path. The nozzle must move
+  // opposite the measured pen-tip offset so the front-mounted pen lands on that path.
+  const penX0=s.originX+s.margin+(uw-ow*scale)/2,penY0=s.originY+s.margin+(uh-oh*scale)/2;
+  const x0=penX0-s.offsetX,y0=penY0-s.offsetY;
   const px=scale/resize,up=s.penUp+s.offsetZ,down=s.penDown+s.offsetZ;
   const isA1 = s.profile === "bambu-a1";
   const lines = isA1
@@ -429,7 +432,8 @@ function updatePenHeightControl(){
   const down=number("penDown")+number("offsetZ");
   const gcodeDelta=m?m.z-down:0;
   sim.gantryGroup.position.y=260.8+gcodeDelta+value;
-  // Reflect calibrated X/Y pen offsets in the front-mounted holder visualization.
+  // The holder is in front of the nozzle (+ machine Y / scene depth).
+  // Offset fields describe pen-tip position relative to nozzle; they move the holder.
   if(sim.holderAssembly) sim.holderAssembly.position.set(Number($("offsetX").value),0,25+Number($("offsetY").value));
 }
 function updateSimulation(index){
@@ -446,8 +450,9 @@ function updateSimulation(index){
   for(let i=0;i<=sim.index;i++){
     const q=sim.moves[i];
     if(q.draw&&(q.x!==q.fromX||q.y!==q.fromY)){
-      points.push(new THREE.Vector3(q.fromX,10.9,q.y));
-      points.push(new THREE.Vector3(q.x,10.9,q.y));
+      // Render the actual pen tip path, not the offset nozzle path.
+      points.push(new THREE.Vector3(q.fromX+s.offsetX,10.9,q.y+s.offsetY));
+      points.push(new THREE.Vector3(q.x+s.offsetX,10.9,q.y+s.offsetY));
     }
   }
   sim.path.geometry.dispose();sim.path.geometry=new THREE.BufferGeometry().setFromPoints(points);
