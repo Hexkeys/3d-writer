@@ -234,7 +234,7 @@ function drawPlateEditor() {
   const ow=sourceCanvas.width,oh=sourceCanvas.height,uw=s.bedWidth-2*s.margin,uh=s.bedHeight-2*s.margin;
   const fit=Math.min(uw/ow,uh/oh),dw=ow*fit*scale,dh=oh*fit*scale;
   const x=left+(s.margin+(uw-ow*fit)/2+s.placementX)*scale;
-  const y=top+(s.margin+(uh-oh*fit)/2+s.placementY)*scale;
+  const y=top+(s.bedHeight-(s.margin+(uh-oh*fit)/2+s.placementY))*scale-dh;
   const temp=document.createElement("canvas");temp.width=ow;temp.height=oh;
   const tc=temp.getContext("2d",{willReadFrequently:true}),src=sourceCanvas.getContext("2d",{willReadFrequently:true}).getImageData(0,0,ow,oh).data;
   const out=tc.createImageData(ow,oh);
@@ -255,7 +255,7 @@ function updatePlacementFromPointer(event) {
   const dx=(event.clientX-plateDrag.x)/rect.width*plateCanvas.width/scale;
   const dy=(event.clientY-plateDrag.y)/rect.height*plateCanvas.height/scale;
   $("placementX").value=(plateDrag.startX+dx).toFixed(1);
-  $("placementY").value=(plateDrag.startY+dy).toFixed(1);
+  $("placementY").value=(plateDrag.startY-dy).toFixed(1);
   drawPlateEditor();
 }
 plateCanvas.addEventListener("pointerdown",event=>{if(!sourceCanvas)return;plateDrag={x:event.clientX,y:event.clientY,startX:number("placementX"),startY:number("placementY")};plateCanvas.setPointerCapture(event.pointerId);});
