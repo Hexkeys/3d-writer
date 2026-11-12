@@ -80,12 +80,12 @@
           <label>Pen up Z (mm)<input id="penUp" type="number" step="0.1" value="5"></label>
           <label>Pen down Z (mm)<input id="penDown" type="number" step="0.1" value="0"></label>
           <label>Pen-up travel (mm/min)<input id="travelFeed" type="number" min="1" value="600"></label>
-          <label>Drawing speed (mm/min)<input id="drawFeed" type="number" min="1" step="1" value="150"></label>
+          <label>Drawing speed (mm/min, max 1,000)<input id="drawFeed" type="number" min="1" max="1000" step="1" value="150"></label>
           <label>Z speed (mm/min)<input id="zFeed" type="number" min="1" value="120"></label>
         </div>
         <label class="range-label draw-speed-control"><span>Drawing speed · mm/min</span><output id="drawFeedOut">150 mm/min</output></label>
         <input id="drawFeedSlider" type="range" min="10" max="1000" step="10" value="150" aria-label="Drawing speed in millimetres per minute">
-        <p class="hint">This controls the XY speed while the pen is down. The numeric field above also accepts a custom value. It does not change pen-up travel speed or Z movement speed.</p>
+        <p class="hint">This controls XY speed while the pen is down. The review limit is 1,000 mm/min; this does not guarantee the printer or pen holder can safely achieve that speed.</p>
         <button id="generate" class="primary" disabled>Generate G-code <span>↓</span></button>
         <p id="status" class="status" aria-live="polite">Upload a PDF or photo to get started.</p>
       </div>
