@@ -20,3 +20,5 @@
 .a1-ack input{margin-top:3px;flex:none}
 
 .plate-editor{margin-top:18px;padding:14px;background:#0d192a;border:1px solid #293a52;border-radius:11px}.plate-editor canvas{display:block;width:100%;height:auto;max-width:620px;margin:0 auto;border-radius:8px;touch-action:none;cursor:grab}.plate-editor canvas:active{cursor:grabbing}.plate-editor .preview-head{margin-bottom:8px}.plate-position-fields{margin-top:12px}
+
+.profile-select input{display:block;width:100%;margin-top:7px;padding:10px;border:1px solid #34465f;border-radius:8px;background:#111e30;color:inherit;font:inherit}.profile-select{display:block;margin:12px 0}
