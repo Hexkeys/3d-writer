@@ -306,7 +306,7 @@ function generateGcode(){
     lines.push("G0 Z"+up.toFixed(3)+" F"+s.zFeed,"M5","M400","; End");
   }
   const text=lines.join("\n")+"\n",blob=new Blob([text],{type:"text/plain;charset=utf-8"}),url=URL.createObjectURL(blob),a=document.createElement("a");
-  a.href=url;a.download=isA1?"A1_motion_only_REVIEW_NOT_READY.txt":"Gcode.txt";document.body.appendChild(a);a.click();a.remove();window.setTimeout(()=>URL.revokeObjectURL(url),1000);
+  a.href=url;a.download=isA1?"A1_motion_only_REVIEW_NOT_READY.gcode":"Gcode.gcode";document.body.appendChild(a);a.click();a.remove();window.setTimeout(()=>URL.revokeObjectURL(url),1000);
   $("strokeCount").textContent=count.toLocaleString()+" connected paths";
   try{setupSimulation(text);$("status").textContent="Downloaded "+a.download+" · "+count.toLocaleString()+" connected paths, "+segments.toLocaleString()+" drawing segments."+(isA1?" · Review-only; not a printer-ready job.":"");}
   catch(e){console.error("3D preview unavailable:",e);$("status").textContent="Downloaded "+a.download+" · "+count.toLocaleString()+" connected paths. 3D preview unavailable."+(isA1?" Review-only; not a printer-ready job.":"");}
