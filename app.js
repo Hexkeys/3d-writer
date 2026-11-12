@@ -195,7 +195,16 @@ function syncDrawFeedSlider() {
   if (!Number.isFinite(value) || value <= 0) return;
   drawFeedSlider.value = String(Math.max(Number(drawFeedSlider.min), Math.min(Number(drawFeedSlider.max), value)));
   drawFeedOut.value = value.toLocaleString() + " mm/min";
+  updateSpeedWarning();
 }
+function updateSpeedWarning() {
+  const drawing = Number(drawFeedField.value);
+  const travel = Number($("travelFeed").value);
+  const overLimit = (Number.isFinite(drawing) && drawing > 1000) || (Number.isFinite(travel) && travel > 1000);
+  $("speedWarning").hidden = !overLimit;
+}
+$("travelFeed").addEventListener("input", updateSpeedWarning);
+updateSpeedWarning();
 drawFeedSlider.addEventListener("input", () => {
   drawFeedField.value = drawFeedSlider.value;
   drawFeedOut.value = Number(drawFeedSlider.value).toLocaleString() + " mm/min";
