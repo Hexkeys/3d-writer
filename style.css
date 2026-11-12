@@ -18,3 +18,5 @@
 .a1-warning p{font-size:11px;color:#e0d2b9;margin:7px 0}
 .a1-ack{align-items:flex-start!important;margin-top:10px;color:#fff0d3!important;line-height:1.45}
 .a1-ack input{margin-top:3px;flex:none}
+
+.plate-editor{margin-top:18px;padding:14px;background:#0d192a;border:1px solid #293a52;border-radius:11px}.plate-editor canvas{display:block;width:100%;height:auto;max-width:620px;margin:0 auto;border-radius:8px;touch-action:none;cursor:grab}.plate-editor canvas:active{cursor:grabbing}.plate-editor .preview-head{margin-bottom:8px}.plate-position-fields{margin-top:12px}
