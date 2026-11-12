@@ -174,6 +174,23 @@ $("threshold").addEventListener("input",()=>{ $("thresholdOut").value=$("thresho
 $("invert").addEventListener("change",()=>{try{drawPreview();}catch(e){$("status").textContent=e.message;}});
 for(const id of ["bedWidth","bedHeight","margin","lineSpacing","originX","originY","offsetX","offsetY","offsetZ","penUp","penDown","travelFeed","drawFeed","zFeed"]) $(id).addEventListener("change",()=>{try{drawPreview();}catch(e){$("status").textContent=e.message;}});
 
+// Keep the drawing-speed number field and mm/min slider synchronized.
+const drawFeedField = $("drawFeed");
+const drawFeedSlider = $("drawFeedSlider");
+const drawFeedOut = $("drawFeedOut");
+function syncDrawFeedSlider() {
+  const value = Number(drawFeedField.value);
+  if (!Number.isFinite(value) || value <= 0) return;
+  drawFeedSlider.value = String(Math.max(Number(drawFeedSlider.min), Math.min(Number(drawFeedSlider.max), value)));
+  drawFeedOut.value = value.toLocaleString() + " mm/min";
+}
+drawFeedSlider.addEventListener("input", () => {
+  drawFeedField.value = drawFeedSlider.value;
+  drawFeedOut.value = Number(drawFeedSlider.value).toLocaleString() + " mm/min";
+});
+drawFeedField.addEventListener("input", syncDrawFeedSlider);
+syncDrawFeedSlider();
+
 // Keep the three offset sliders and numeric fields synchronized.
 for (const axis of ["X","Y","Z"]) {
   const field = $("offset"+axis);
