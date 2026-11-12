@@ -65,8 +65,11 @@ $("a1CalibrationAck").addEventListener("change", () => {
 function drawPreview() {
   if (!sourceCanvas) return;
   const s = settings(); validate(s);
+  if(!ctx) throw new Error("Your browser could not create the preview canvas. Reload the page or try another browser.");
   const w = sourceCanvas.width, h = sourceCanvas.height;
-  const data = sourceCanvas.getContext("2d", {willReadFrequently:true}).getImageData(0,0,w,h).data;
+  const sourceContext=sourceCanvas.getContext("2d",{willReadFrequently:true});
+  if(!sourceContext) throw new Error("Your browser could not read the rendered page canvas. Try another browser or lower the PDF DPI.");
+  const data = sourceContext.getImageData(0,0,w,h).data;
   const out = ctx.createImageData(w,h);
   let count = 0;
   for (let i=0;i<data.length;i+=4) {
@@ -93,7 +96,9 @@ async function loadPage() {
     if(viewport.width*viewport.height>20000000) throw new Error("Rendered page is too large. Try a lower DPI.");
     const tmp=document.createElement("canvas");
     tmp.width=Math.ceil(viewport.width);tmp.height=Math.ceil(viewport.height);
-    await page.render({canvas:tmp,viewport}).promise;
+    const renderContext=tmp.getContext("2d",{willReadFrequently:true});
+    if(!renderContext) throw new Error("Your browser could not create a canvas for the PDF page. Try another browser or reload the page.");
+    await page.render({canvasContext:renderContext,viewport}).promise;
     sourceCanvas=tmp;canvas.width=tmp.width;canvas.height=tmp.height;
     $("pageInfo").textContent="Page "+pageNo+" of "+pdfDoc.numPages;
     drawPreview();
