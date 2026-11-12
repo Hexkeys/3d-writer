@@ -35,6 +35,7 @@
         <input id="threshold" type="range" min="0" max="255" value="200">
         <p class="hint">Dark pixels are traced as connected centerline paths; white pixels are left blank.</p>
         <label class="check"><input id="invert" type="checkbox"> Draw light areas instead</label>
+        <label class="check"><input id="mirrorX" type="checkbox"> Mirror horizontally (for mirror-image output)</label>
         <div class="section-rule"></div>
         <div class="panel-heading"><div><p class="eyebrow">03 / MACHINE</p><h2>Machine profile</h2></div></div>
         <label class="profile-select">Output profile<select id="machineProfile"><option value="generic">Generic pen-plotter G-code</option><option value="bambu-a1">Bambu Lab A1 · motion-only review export</option></select></label>
@@ -89,6 +90,15 @@
         <div class="preview-head"><div><p class="eyebrow">LIVE PREVIEW</p><h2>Drawing preview</h2></div><span id="pageInfo" class="pill">No PDF loaded</span></div>
         <div class="preview-stage"><canvas id="preview" width="800" height="800"></canvas><div id="emptyState" class="empty-state"><span>▧</span><strong>Your page will appear here</strong><small>Upload a PDF to preview the pen path</small></div></div>
         <div class="preview-foot"><span><i class="dot"></i> Detected ink</span><span id="strokeCount">0 strokes</span></div>
+        <div class="plate-editor">
+          <div class="preview-head"><div><p class="eyebrow">PLATE LAYOUT</p><h2>Position your text</h2></div><button id="centerArtwork" class="secondary" type="button">Center</button></div>
+          <p class="hint">Drag the artwork on the plate to position it. The preview shows the same horizontal mirror setting used in the exported toolpath.</p>
+          <canvas id="plateEditor" width="720" height="720" aria-label="Draggable drawing layout on the printer bed"></canvas>
+          <div class="field-grid plate-position-fields">
+            <label>Move X (mm)<input id="placementX" type="number" step="0.1" value="0"></label>
+            <label>Move Y (mm)<input id="placementY" type="number" step="0.1" value="0"></label>
+          </div>
+        </div>
         <div class="notice"><strong>Machine safety</strong><p>Generic output is not verified for Bambu firmware. The A1 review profile exports a motion-only text file, not a complete printer job. Neither profile verifies physical clearances or makes a real printer safe to operate. Do not run an export until its firmware workflow, coordinate frame, pen offsets, Z clearance, and physical keep-outs have been independently validated.</p></div>
       </div>
     </section>
