@@ -100,6 +100,8 @@
           <div class="field-grid plate-position-fields">
             <label>Move X (mm)<input id="placementX" type="number" step="0.1" value="0"></label>
             <label>Move Y (mm)<input id="placementY" type="number" step="0.1" value="0"></label>
+            <label>Artwork width scale (%)<input id="scaleX" type="number" min="1" max="300" step="1" value="100"></label>
+            <label>Artwork height scale (%)<input id="scaleY" type="number" min="1" max="300" step="1" value="100"></label>
           </div>
         </div>
         <div class="notice"><strong>Machine safety</strong><p>Generic output is not verified for Bambu firmware. The A1 review profile exports a motion-only text file, not a complete printer job. Neither profile verifies physical clearances or makes a real printer safe to operate. Do not run an export until its firmware workflow, coordinate frame, pen offsets, Z clearance, and physical keep-outs have been independently validated.</p></div>
