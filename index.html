@@ -33,7 +33,10 @@
         <div class="panel-heading"><div><p class="eyebrow">02 / IMAGE</p><h2>Ink detection</h2></div></div>
         <label class="range-label"><span>Darkness threshold</span><output id="thresholdOut">200</output></label>
         <input id="threshold" type="range" min="0" max="255" value="200">
-        <p class="hint">Dark pixels are traced as connected centerline paths; white pixels are left blank.</p>
+        <p class="hint">Choose whether the pen traces the edges of dark areas or fills them with closely spaced strokes.</p>
+        <label class="profile-select">Drawing mode<select id="drawMode"><option value="outline">Outline only</option><option value="fill">Fill in (hatch)</option></select></label>
+        <label class="profile-select">Fill line spacing (mm)<input id="fillSpacing" type="number" min="0.2" max="10" step="0.1" value="1.2"></label>
+        <p class="hint">Smaller spacing makes denser fill and takes longer. Fill mode uses parallel pen strokes; it is not solid ink shading.</p>
         <label class="check"><input id="invert" type="checkbox"> Draw light areas instead</label>
         <label class="check"><input id="mirrorX" type="checkbox"> Mirror horizontally (for mirror-image output)</label>
         <div class="section-rule"></div>
