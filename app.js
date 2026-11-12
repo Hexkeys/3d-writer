@@ -369,7 +369,7 @@ async function generateGcode(){
   let paths;
   if(s.drawMode==="fill"){
     const uw=s.bedWidth-2*s.margin,uh=s.bedHeight-2*s.margin;
-    const fit=Math.min(uw/ow,uh/oh),stepPx=Math.max(1,Math.round(s.fillSpacing/(fit/resize)));
+    const fit=Math.min(uw/(w/resize),uh/(h/resize)),stepPx=Math.max(1,Math.round(s.fillSpacing/(fit/resize)));
     paths=[];
     for(let y=Math.floor(stepPx/2);y<h;y+=stepPx){
       let x=0,runs=[];
