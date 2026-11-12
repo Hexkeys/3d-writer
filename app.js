@@ -365,15 +365,35 @@ function init3D(){
   nozzle.position.set(0,-145,0);headGroup.add(nozzle);
   const nozzleTip=new THREE.Mesh(new THREE.ConeGeometry(2.4,9,16),mat(0x596779));
   nozzleTip.rotation.z=Math.PI;nozzleTip.position.set(0,-199.5,0);headGroup.add(nozzleTip);
-  // Side-mounted holder + pen; fixed to the same moving head assembly.
-  beam(17,50,22,-25,-65,0,mat(0x657b91),headGroup);
-  beam(12,12,20,-25,-98,0,dark,headGroup);
-  const pen=new THREE.Mesh(new THREE.CylinderGeometry(4.2,3.2,100,18),mat(0xe9d7a4));
-  pen.position.set(-25,-149.5,0);headGroup.add(pen);
-  const penBand=new THREE.Mesh(new THREE.CylinderGeometry(5,5,5,18),dark);
-  penBand.position.set(-25,-113,0);headGroup.add(penBand);
-  const penTip=new THREE.Mesh(new THREE.ConeGeometry(2.2,9,14),mat(0x253044));
-  penTip.rotation.z=Math.PI;penTip.position.set(-25,-199.5,0);headGroup.add(penTip);
+  // Photo-based side-mounted spring pen holder reconstruction.
+  // This is a visual approximation of the uploaded holder, not an exact CAD assembly.
+  const holderWhite=mat(0xe8e2d8,.82),holderShadow=mat(0xc9c2b8,.82),penBlack=mat(0x171b20,.5),springMetal=mat(0x9ba5ae,.42);
+  const holderAssembly=new THREE.Group();holderAssembly.position.x=Number($("offsetX").value)||-25;headGroup.add(holderAssembly);
+  const mountX=0;
+  // Tall molded holder body beside the nozzle, with a recessed central pen channel.
+  beam(39,122,48,mountX,-91,0,holderWhite,holderAssembly);
+  beam(25,106,4,mountX,-91,25,holderShadow,holderAssembly);
+  beam(7,100,5,mountX-16,-91,27,holderWhite,holderAssembly);
+  beam(7,100,5,mountX+16,-91,27,holderWhite,holderAssembly);
+  // Upper and lower retaining bridges/clips visible in the reference photo.
+  beam(46,13,20,mountX,-48,31,holderWhite,holderAssembly);
+  beam(46,13,20,mountX,-139,31,holderWhite,holderAssembly);
+  beam(18,8,9,mountX-17,-48,42,holderShadow,holderAssembly);
+  beam(18,8,9,mountX+17,-139,42,holderShadow,holderAssembly);
+  // Vertical pen barrel and tapered writing tip.
+  const pen=new THREE.Mesh(new THREE.CylinderGeometry(4.2,3.4,118,20),penBlack);
+  pen.position.set(mountX,-151,0);headGroup.add(pen);
+  const penCollar=new THREE.Mesh(new THREE.CylinderGeometry(5.2,5.2,8,20),springMetal);
+  penCollar.position.set(mountX,-91,0);headGroup.add(penCollar);
+  const penTip=new THREE.Mesh(new THREE.ConeGeometry(3.1,13,18),penBlack);
+  penTip.rotation.z=Math.PI;penTip.position.set(mountX,-216.5,0);headGroup.add(penTip);
+  // Small visible spring/slider guide behind the pen barrel.
+  const guide=new THREE.Mesh(new THREE.CylinderGeometry(2.3,2.3,72,12),springMetal);
+  guide.position.set(mountX+11,-91,-27);headGroup.add(guide);
+  for(let k=0;k<9;k++){
+    const ring=new THREE.Mesh(new THREE.TorusGeometry(3.3,.75,6,16),springMetal);
+    ring.rotation.x=Math.PI/2;ring.position.set(mountX+11,-58-k*8,-27);headGroup.add(ring);
+  }
 
   // Bed-local ink follows the paper while the bed moves under the fixed pen.
   const path=new THREE.LineSegments(new THREE.BufferGeometry(),new THREE.LineBasicMaterial({color:0x243047}));
@@ -387,7 +407,7 @@ function init3D(){
   renderer.domElement.addEventListener("pointercancel",()=>drag=false);
   renderer.domElement.addEventListener("pointermove",e=>{if(!drag)return;angle-=(e.clientX-lx)*.006;elevation+=(e.clientY-ly)*.006;lx=e.clientX;ly=e.clientY;place();});
   renderer.domElement.addEventListener("wheel",e=>{radius=Math.max(500,Math.min(1500,radius+e.deltaY*.7));place();},{passive:true});
-  sim={scene,camera,renderer,bedGroup,gantryGroup,headGroup,path,moves:[],index:0,bedLeft,bedFront,bedSurfaceY,manualZ:Number($("simPenHeight")?.value||0)};
+  sim={scene,camera,renderer,bedGroup,gantryGroup,headGroup,holderAssembly,path,moves:[],index:0,bedLeft,bedFront,bedSurfaceY,manualZ:Number($("simPenHeight")?.value||0)};
   bedGroup.position.set(bedLeft,52,bedFront);
   headGroup.position.set(bedLeft+128+25,0,0);
   renderer.setAnimationLoop(()=>renderer.render(scene,camera));
@@ -406,6 +426,9 @@ function updatePenHeightControl(){
   const down=number("penDown")+number("offsetZ");
   const gcodeDelta=m?m.z-down:0;
   sim.gantryGroup.position.y=260.8+gcodeDelta+value;
+  // Reflect the configured lateral pen offset in the mounted-holder visualization.
+  const holder=sim.headGroup.children;
+  if(sim.holderAssembly) sim.holderAssembly.position.x=Number($("offsetX").value)||-25;
 }
 function updateSimulation(index){
   if(!sim?.moves?.length)return;
