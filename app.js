@@ -1,5 +1,6 @@
 import * as pdfjsLib from "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs";
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js";
+import JSZip from "https://cdn.jsdelivr.net/npm/jszip@3.10.1/+esm";
 pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs";
 
 const $ = (id) => document.getElementById(id);
@@ -8,6 +9,7 @@ const ctx = canvas.getContext("2d", { willReadFrequently: true });
 let pdfDoc = null;
 let sourceCanvas = null;
 let renderBusy = false;
+let bambuTemplateFile = null;
 
 const number = (id) => {
   const value = Number($(id).value);
@@ -272,7 +274,7 @@ function orderPaths(paths){
     }let p=todo.splice(bi,1)[0];if(rev)p=p.slice().reverse();out.push(p);last=p[p.length-1];
   }return out;
 }
-function generateGcode(){
+async function generateGcode(){
   const s=settings();validate(s);if(!sourceCanvas)throw new Error("Upload a PDF or image first.");
   const ow=sourceCanvas.width,oh=sourceCanvas.height,resize=Math.min(1,1200/Math.max(ow,oh));
   const raster=document.createElement("canvas");raster.width=Math.max(1,Math.round(ow*resize));raster.height=Math.max(1,Math.round(oh*resize));
@@ -305,14 +307,33 @@ function generateGcode(){
   } else {
     lines.push("G0 Z"+up.toFixed(3)+" F"+s.zFeed,"M5","M400","; End");
   }
-  const text=lines.join("\n")+"\n",blob=new Blob([text],{type:"text/plain;charset=utf-8"}),url=URL.createObjectURL(blob),a=document.createElement("a");
-  a.href=url;a.download=isA1?"A1_motion_only_REVIEW_NOT_READY.gcode":"Gcode.gcode";document.body.appendChild(a);a.click();a.remove();window.setTimeout(()=>URL.revokeObjectURL(url),1000);
+  const text=lines.join("\n")+"\n";
+  let downloadName=isA1?"A1_motion_only_REVIEW_NOT_READY.gcode":"Gcode.gcode";
+  let downloadBlob=new Blob([text],{type:"text/plain;charset=utf-8"});
+  if(isA1){
+    if(!bambuTemplateFile)throw new Error("Select a Bambu Studio .gcode.3mf template first. The app needs a template exported by your own A1 printer profile to create a Studio-openable package.");
+    const zip=await JSZip.loadAsync(await bambuTemplateFile.arrayBuffer());
+    const candidates=Object.keys(zip.files).filter(name=>/^Metadata\\/plate_\\d+\\.gcode$/i.test(name)&&!zip.files[name].dir);
+    const target=candidates.find(name=>/plate_1\\.gcode$/i.test(name))||candidates[0];
+    if(!target)throw new Error("That template has no Metadata/plate_N.gcode file. Export a sliced plate as a .gcode.3mf file from Bambu Studio and select it.");
+    zip.file(target,text);
+    downloadBlob=await zip.generateAsync({type:"blob",mimeType:"application/vnd.ms-package.3dmanufacturing-3dmodel+zip",compression:"DEFLATE",compressionOptions:{level:6}});
+    downloadName="A1_PEN_PLOTTER_REVIEW_ONLY.gcode.3mf";
+  }
+  const url=URL.createObjectURL(downloadBlob),a=document.createElement("a");
+  a.href=url;a.download=downloadName;document.body.appendChild(a);a.click();a.remove();window.setTimeout(()=>URL.revokeObjectURL(url),3000);
   $("strokeCount").textContent=count.toLocaleString()+" connected paths";
-  try{setupSimulation(text);$("status").textContent="Downloaded "+a.download+" · "+count.toLocaleString()+" connected paths, "+segments.toLocaleString()+" drawing segments."+(isA1?" · Review-only; not a printer-ready job.":"");}
-  catch(e){console.error("3D preview unavailable:",e);$("status").textContent="Downloaded "+a.download+" · "+count.toLocaleString()+" connected paths. 3D preview unavailable."+(isA1?" Review-only; not a printer-ready job.":"");}
+  try{setupSimulation(text);$("status").textContent="Downloaded "+downloadName+" · "+count.toLocaleString()+" connected paths, "+segments.toLocaleString()+" drawing segments."+(isA1?" · Studio package created; still review-only, not approved to run.":"");}
+  catch(e){console.error("3D preview unavailable:",e);$("status").textContent="Downloaded "+downloadName+" · "+count.toLocaleString()+" connected paths. 3D preview unavailable."+(isA1?" Review-only; not approved to run.":"");}
 }
 
-$("generate").addEventListener("click",()=>{try{generateGcode();}catch(e){$("status").textContent=e.message;}});
+$("bambuTemplate").addEventListener("change",event=>{
+  const file=event.target.files?.[0]||null;
+  bambuTemplateFile=file;
+  $("bambuTemplateStatus").textContent=file?"Template selected: "+file.name:"No Bambu Studio template selected.";
+});
+$("generate").addEventListener("click",async()=>{try{await generateGcode();}catch(e){$("status").textContent=e.message;}});
+
 
 
 // Three.js visual simulator: reads the generated G-code, never controls a real printer.
