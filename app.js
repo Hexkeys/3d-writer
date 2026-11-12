@@ -29,7 +29,7 @@ const settings = () => ({
 });
 function validate(s) {
   if (s.bedWidth <= 0 || s.bedHeight <= 0 || s.bedWidth > 256 || s.bedHeight > 256 || s.margin < 0 || s.bedWidth <= 2*s.margin || s.bedHeight <= 2*s.margin) throw new Error("The Bambu Lab A1 build area is 256 × 256 mm. Bed dimensions must stay within that limit and be larger than twice the margin.");
-  if (s.lineSpacing <= 0 || s.fillSpacing <= 0 || s.travelFeed <= 0 || s.drawFeed <= 0 || s.drawFeed > 1000 || s.zFeed <= 0) throw new Error("Line spacing and feed rates must be greater than zero.");
+  if (s.lineSpacing <= 0 || s.fillSpacing <= 0 || s.travelFeed <= 0 || s.drawFeed <= 0 || s.zFeed <= 0) throw new Error("Line spacing and feed rates must be greater than zero.");
   if (s.threshold < 0 || s.threshold > 255) throw new Error("Threshold must be between 0 and 255.");
   if (s.scaleX <= 0 || s.scaleY <= 0 || s.scaleX > 3 || s.scaleY > 3) throw new Error("Artwork scale must be greater than 0% and no more than 300%.");
   if (s.drawFeed > 1000) throw new Error("Drawing speed is limited to 1,000 mm/min in this review workflow.");
