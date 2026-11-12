@@ -85,7 +85,8 @@
         </div>
         <label class="range-label draw-speed-control"><span>Drawing speed · mm/min</span><output id="drawFeedOut">150 mm/min</output></label>
         <input id="drawFeedSlider" type="range" min="10" max="1000" step="10" value="150" aria-label="Drawing speed in millimetres per minute">
-        <p class="hint">This controls XY speed while the pen is down. The review limit is 1,000 mm/min; this does not guarantee the printer or pen holder can safely achieve that speed.</p>
+        <p id="speedWarning" class="hint" role="status" hidden>Be careful: an XY speed is set above 1,000 mm/min. High speeds can affect motion, pen contact, and mechanical stability. Check the machine and pen-holder limits before considering any physical use.</p>
+        <p class="hint">This controls XY speed while the pen is down. The current export validation limit is 1,000 mm/min; this does not guarantee the printer or pen holder can safely achieve that speed.</p>
         <button id="generate" class="primary" disabled>Generate G-code <span>↓</span></button>
         <p id="status" class="status" aria-live="polite">Upload a PDF or photo to get started.</p>
       </div>
