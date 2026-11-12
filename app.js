@@ -22,7 +22,9 @@ const settings = () => ({
   lineSpacing: number("lineSpacing"), originX: number("originX"), originY: number("originY"),
   offsetX: number("offsetX"), offsetY: number("offsetY"), offsetZ: number("offsetZ"), penUp: number("penUp"), penDown: number("penDown"),
   travelFeed: number("travelFeed"), drawFeed: number("drawFeed"), zFeed: number("zFeed"),
-  profile: $("machineProfile").value
+  profile: $("machineProfile").value,
+  mirrorX: $("mirrorX").checked,
+  placementX: number("placementX"), placementY: number("placementY")
 });
 function validate(s) {
   if (s.bedWidth <= 0 || s.bedHeight <= 0 || s.bedWidth > 256 || s.bedHeight > 256 || s.margin < 0 || s.bedWidth <= 2*s.margin || s.bedHeight <= 2*s.margin) throw new Error("The Bambu Lab A1 build area is 256 × 256 mm. Bed dimensions must stay within that limit and be larger than twice the margin.");
@@ -74,6 +76,7 @@ function drawPreview() {
   ctx.putImageData(out,0,0);
   canvas.style.display="block"; $("emptyState").style.display="none";
   $("strokeCount").textContent = count.toLocaleString()+" dark pixels";
+  drawPlateEditor();
 }
 async function loadPage() {
   if (!pdfDoc || renderBusy) return;
@@ -211,6 +214,59 @@ for (const axis of ["X","Y","Z"]) {
   syncFromField();
 }
 
+
+// Plate editor: drag the artwork on the bed to set its X/Y placement.
+const plateCanvas = $("plateEditor");
+const plateCtx = plateCanvas.getContext("2d");
+let plateDrag = null;
+function drawPlateEditor() {
+  if (!sourceCanvas) return;
+  const s = settings(), cw=plateCanvas.width,ch=plateCanvas.height,pad=28;
+  plateCtx.clearRect(0,0,cw,ch);
+  plateCtx.fillStyle="#0a1422";plateCtx.fillRect(0,0,cw,ch);
+  const bedW=cw-pad*2,bedH=ch-pad*2,scale=Math.min(bedW/s.bedWidth,bedH/s.bedHeight);
+  const bw=s.bedWidth*scale,bh=s.bedHeight*scale,left=(cw-bw)/2,top=(ch-bh)/2;
+  plateCtx.fillStyle="#e8edf2";plateCtx.fillRect(left,top,bw,bh);
+  plateCtx.strokeStyle="#9baabd";plateCtx.lineWidth=1;plateCtx.strokeRect(left,top,bw,bh);
+  plateCtx.strokeStyle="#cbd3dc";plateCtx.lineWidth=.6;
+  for(let x=1;x< s.bedWidth/10;x++){const xx=left+x*10*scale;plateCtx.beginPath();plateCtx.moveTo(xx,top);plateCtx.lineTo(xx,top+bh);plateCtx.stroke();}
+  for(let y=1;y< s.bedHeight/10;y++){const yy=top+y*10*scale;plateCtx.beginPath();plateCtx.moveTo(left,yy);plateCtx.lineTo(left+bw,yy);plateCtx.stroke();}
+  const ow=sourceCanvas.width,oh=sourceCanvas.height,uw=s.bedWidth-2*s.margin,uh=s.bedHeight-2*s.margin;
+  const fit=Math.min(uw/ow,uh/oh),dw=ow*fit*scale,dh=oh*fit*scale;
+  const x=left+(s.margin+(uw-ow*fit)/2+s.placementX)*scale;
+  const y=top+(s.margin+(uh-oh*fit)/2+s.placementY)*scale;
+  const temp=document.createElement("canvas");temp.width=ow;temp.height=oh;
+  const tc=temp.getContext("2d",{willReadFrequently:true}),src=sourceCanvas.getContext("2d",{willReadFrequently:true}).getImageData(0,0,ow,oh).data;
+  const out=tc.createImageData(ow,oh);
+  for(let i=0;i<src.length;i+=4){const g=Math.round(.299*src[i]+.587*src[i+1]+.114*src[i+2]);const ink=s.invert?g>s.threshold:g<=s.threshold;out.data[i]=20;out.data[i+1]=35;out.data[i+2]=48;out.data[i+3]=ink?255:0;}
+  tc.putImageData(out,0,0);
+  plateCtx.save();
+  if(s.mirrorX){plateCtx.translate(x+dw,y);plateCtx.scale(-1,1);plateCtx.drawImage(temp,0,0,dw,dh);}
+  else plateCtx.drawImage(temp,x,y,dw,dh);
+  plateCtx.restore();
+  plateCtx.strokeStyle="#9de6c2";plateCtx.lineWidth=2;plateCtx.strokeRect(x,y,dw,dh);
+  plateCtx.fillStyle="#9de6c2";plateCtx.font="12px ui-monospace,monospace";
+  plateCtx.fillText("256 × 256 mm bed · drag artwork to position",pad,18);
+  $("placementX").dataset.scale=String(scale);$("placementY").dataset.scale=String(scale);
+}
+function updatePlacementFromPointer(event) {
+  if(!plateDrag)return;
+  const rect=plateCanvas.getBoundingClientRect(),scale=Number($("placementX").dataset.scale)||1;
+  const dx=(event.clientX-plateDrag.x)/rect.width*plateCanvas.width/scale;
+  const dy=(event.clientY-plateDrag.y)/rect.height*plateCanvas.height/scale;
+  $("placementX").value=(plateDrag.startX+dx).toFixed(1);
+  $("placementY").value=(plateDrag.startY+dy).toFixed(1);
+  drawPlateEditor();
+}
+plateCanvas.addEventListener("pointerdown",event=>{if(!sourceCanvas)return;plateDrag={x:event.clientX,y:event.clientY,startX:number("placementX"),startY:number("placementY")};plateCanvas.setPointerCapture(event.pointerId);});
+plateCanvas.addEventListener("pointermove",updatePlacementFromPointer);
+plateCanvas.addEventListener("pointerup",()=>plateDrag=null);
+plateCanvas.addEventListener("pointercancel",()=>plateDrag=null);
+for(const id of ["mirrorX","placementX","placementY","bedWidth","bedHeight","margin","threshold","invert"]){
+  $(id).addEventListener("input",()=>{try{drawPreview();}catch(e){$("status").textContent=e.message;}});
+}
+$("centerArtwork").addEventListener("click",()=>{$("placementX").value="0";$("placementY").value="0";try{drawPreview();}catch(e){}});
+
 function maskToContours(binary,width,height){
   // Each exposed side of a dark pixel becomes one directed edge on the pixel grid.
   // Edges are directed consistently so neighbouring pixels form continuous loops.
@@ -304,7 +360,7 @@ async function generateGcode(){
   const uw=s.bedWidth-2*s.margin,uh=s.bedHeight-2*s.margin,scale=Math.min(uw/ow,uh/oh);
   // Image coordinates describe the desired PEN TIP path. The nozzle must move
   // opposite the measured pen-tip offset so the front-mounted pen lands on that path.
-  const penX0=s.originX+s.margin+(uw-ow*scale)/2,penY0=s.originY+s.margin+(uh-oh*scale)/2;
+  const penX0=s.originX+s.margin+(uw-ow*scale)/2+s.placementX,penY0=s.originY+s.margin+(uh-oh*scale)/2+s.placementY;
   const x0=penX0-s.offsetX,y0=penY0-s.offsetY;
   const px=scale/resize,up=s.penUp+s.offsetZ,down=s.penDown+s.offsetZ;
   const isA1 = s.profile === "bambu-a1";
@@ -312,7 +368,7 @@ async function generateGcode(){
     ? ["; BAMBU LAB A1 PROFILE — MOTION-ONLY REVIEW EXPORT","; NOT a complete printer job and NOT approved to run directly on an A1.","; Requests homing of all axes at the start of each generated file.","; Verify homing travel and front-mounted holder clearance, including the A1 nozzle-wipe area.","; Verify pen mount offsets, measured Z clearance, bed clips, wiper, cutter, and all keep-outs.","; Initial software envelope is limited to 180 x 180 mm; this is not a physical clearance guarantee.","; Generated by 3D Writer · connected centerline strokes","G28 X Y Z ; home X, Y, and Z axes","G21 ; millimeters","G90 ; absolute positioning","G0 Z"+up.toFixed(3)+" F"+s.zFeed]
     : ["; Connected centerline pen-plotter output","; Generated by 3D Writer · continuous shape contours","; Check that this printer supports G28 homing before use.","G28 ; home all axes","G21 ; millimeters","G90 ; absolute positioning","G0 Z"+up.toFixed(3)+" F"+s.zFeed];
   let count=0,segments=0;
-  for(const path of paths){const pts=path.map(p=>({x:x0+ow*scale-p.x*px,y:y0+oh*scale-p.y*px}));
+  for(const path of paths){const pts=path.map(p=>({x:x0+(s.mirrorX?ow*scale-p.x*px:p.x*px),y:y0+oh*scale-p.y*px}));
     if(pts.length<2)continue;
     if(pts.some(p=>p.x<0||p.y<0||p.x>256||p.y>256))throw new Error("A drawing path would leave the A1 256 × 256 mm build area. Reduce the image size, margins, or offsets.");
     lines.push("G0 Z"+up.toFixed(3)+" F"+s.zFeed,"G0 X"+pts[0].x.toFixed(3)+" Y"+pts[0].y.toFixed(3)+" F"+s.travelFeed,"G1 Z"+down.toFixed(3)+" F"+s.zFeed);
