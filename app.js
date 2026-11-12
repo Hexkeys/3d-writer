@@ -192,6 +192,36 @@ for (const axis of ["X","Y","Z"]) {
   syncFromField();
 }
 
+function maskToContours(binary,width,height){
+  // Each exposed side of a dark pixel becomes one directed edge on the pixel grid.
+  // Edges are directed consistently so neighbouring pixels form continuous loops.
+  const edges=[],starts=new Map(),key=(x,y)=>x+","+y;
+  const add=(x1,y1,x2,y2)=>{
+    const e={x:x1,y:y1,nx:x2,ny:y2,used:false};
+    const id=edges.length;edges.push(e);const k=key(x1,y1);
+    if(!starts.has(k))starts.set(k,[]);starts.get(k).push(id);
+  };
+  for(let y=0;y<height;y++)for(let x=0;x<width;x++){
+    if(!binary[y*width+x])continue;
+    if(y===0||!binary[(y-1)*width+x])add(x,y,x+1,y);
+    if(x===width-1||!binary[y*width+x+1])add(x+1,y,x+1,y+1);
+    if(y===height-1||!binary[(y+1)*width+x])add(x+1,y+1,x,y+1);
+    if(x===0||!binary[y*width+x-1])add(x,y+1,x,y);
+  }
+  const paths=[];
+  for(let i=0;i<edges.length;i++){
+    if(edges[i].used)continue;
+    const first=edges[i],path=[{x:first.x,y:first.y}];let cur=i,guard=0;
+    while(cur!==-1&&!edges[cur].used&&guard++<=edges.length){
+      const e=edges[cur];e.used=true;path.push({x:e.nx,y:e.ny});
+      if(e.nx===first.x&&e.ny===first.y)break;
+      const candidates=starts.get(key(e.nx,e.ny))||[];
+      cur=candidates.find(j=>!edges[j].used)??-1;
+    }
+    if(path.length>=9&&path[path.length-1].x===path[0].x&&path[path.length-1].y===path[0].y)paths.push(path);
+  }
+  return paths;
+}
 function thinBinaryImage(binary,width,height){
   const n8=i=>[binary[i-width],binary[i-width+1],binary[i+1],binary[i+width+1],binary[i+width],binary[i+width-1],binary[i-1],binary[i-width-1]];
   let changed=true,passes=0;const remove=[];
@@ -249,8 +279,8 @@ function generateGcode(){
   const rc=raster.getContext("2d",{willReadFrequently:true});rc.drawImage(sourceCanvas,0,0,raster.width,raster.height);
   const w=raster.width,h=raster.height,data=rc.getImageData(0,0,w,h).data,mask=new Uint8Array(w*h);
   for(let i=0,p=0;i<mask.length;i++,p+=4){const g=Math.round(.299*data[p]+.587*data[p+1]+.114*data[p+2]);mask[i]=s.invert?(g>s.threshold?1:0):(g<=s.threshold?1:0);}
-  thinBinaryImage(mask,w,h);
-  let paths=orderPaths(skeletonToPaths(mask,w,h).map(a=>simplifyPath(a.map(i=>({x:i%w,y:Math.floor(i/w)})),s.lineSpacing)).filter(p=>p.length>1));
+  // Trace the exposed pixel boundaries as continuous closed contours. This makes the pen follow shapes (for example, a circle) instead of thinning filled areas into dot-like centerline fragments.
+  let paths=orderPaths(maskToContours(mask,w,h).map(p=>{const q=simplifyPath(p.slice(0,-1),s.lineSpacing);if(q.length>2)q.push(q[0]);return q;}).filter(p=>p.length>3));
   if(!paths.length)throw new Error("No connected pen paths found. Try changing the darkness threshold or using a clearer image.");
   const uw=s.bedWidth-2*s.margin,uh=s.bedHeight-2*s.margin,scale=Math.min(uw/ow,uh/oh);
   // Image coordinates describe the desired PEN TIP path. The nozzle must move
